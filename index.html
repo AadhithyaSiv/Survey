@@ -924,13 +924,14 @@ function transmit(payload){
   try{ const log=JSON.parse(localStorage.getItem('swdmi_results')||'[]'); log.push(payload); localStorage.setItem('swdmi_results',JSON.stringify(log)); }catch(e){}
   if(!CONFIG.endpoint) return;
   const body=JSON.stringify(payload);
-  /* Google Apps Script accepts a cross-origin POST only as a "simple" request
-     (no CORS preflight). We therefore send text/plain and never read the reply;
-     the Apps Script still JSON.parses the body server-side. */
-  const blob=new Blob([body],{type:'text/plain;charset=UTF-8'}); let sent=false;
-  try{ if(navigator.sendBeacon) sent=navigator.sendBeacon(CONFIG.endpoint,blob); }catch(e){}
-  if(!sent){ fetch(CONFIG.endpoint,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=UTF-8'},body,keepalive:true})
-    .catch(()=>queueUnsent(payload)); }
+  /* Send with fetch (NOT sendBeacon): Google Apps Script replies with a 302
+     redirect that sendBeacon mishandles — it reports success but the data never
+     arrives. text/plain keeps this a "simple" request (no CORS preflight);
+     keepalive lets it finish even if the tab is closed right after. On failure
+     the payload is queued and retried on next load / when back online. */
+  fetch(CONFIG.endpoint,{method:'POST',mode:'no-cors',keepalive:true,
+    headers:{'Content-Type':'text/plain;charset=UTF-8'},body})
+    .catch(()=>queueUnsent(payload));
 }
 /* If a send fails (e.g. the respondent's connection drops at the very end),
    the payload is parked here and retried on the next page load / when the
