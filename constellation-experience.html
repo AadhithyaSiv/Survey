@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>A study on how we decide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --ink:#22243a; --ink-dim:#6f7290; --paper:#ffffff; --line:rgba(60,60,110,.14);
+    --accent:#4a6ff0; --accent2:#8aa0e8; --b1:#c7d2f6; --b2:#dfe6fb; --b3:#d3dcf6; --b4:#eaeffb; }
+  *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{ color:var(--ink); font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    background:linear-gradient(155deg,#f6f7fd 0%,#eef1fb 100%);
+    -webkit-font-smoothing:antialiased;}
+  #app{position:relative; width:100%; min-height:100vh; min-height:100svh; overflow:hidden;}
+  #scene{position:absolute; inset:0; z-index:0; display:block; opacity:.5; pointer-events:none;}
+  #vignette{position:absolute; inset:0; z-index:1; display:block; pointer-events:none;
+    background:radial-gradient(62% 54% at 50% 44%, var(--scrim,rgba(255,255,255,.5)) 0%, transparent 72%),
+               radial-gradient(125% 105% at 50% 50%, transparent 52%, var(--scrimEdge,rgba(70,85,120,.1)) 100%);}
+  #grain{position:absolute; inset:0; z-index:1; pointer-events:none; opacity:.5; mix-blend-mode:multiply;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");}
+  .blob{display:none;}
+  .b1{width:46vw;height:46vw; background:var(--b1); top:-10vw; left:-8vw; animation:f1 19s ease-in-out infinite;}
+  .b2{width:40vw;height:40vw; background:var(--b2); top:38vh; right:-10vw; animation:f2 23s ease-in-out infinite;}
+  .b3{width:42vw;height:42vw; background:var(--b3); bottom:-12vw; left:8vw; animation:f3 21s ease-in-out infinite;}
+  .b4{width:32vw;height:32vw; background:var(--b4); top:6vh; right:22vw; animation:f1 27s ease-in-out infinite;}
+  @keyframes f1{0%,100%{transform:translate(0,0)}50%{transform:translate(4vw,5vh)}}
+  @keyframes f2{0%,100%{transform:translate(0,0)}50%{transform:translate(-5vw,-4vh)}}
+  @keyframes f3{0%,100%{transform:translate(0,0)}50%{transform:translate(3vw,-6vh)}}
+  #thread{position:absolute; top:0; left:0; right:0; height:64px; z-index:3; pointer-events:none;}
+  #stage{position:relative; z-index:2; min-height:100vh; min-height:100svh; display:flex; align-items:center; justify-content:center; padding:60px 22px;}
+  .moment{max-width:640px; width:100%; text-align:center; opacity:0;}
+  .moment.in{opacity:1; animation:pop .5s cubic-bezier(.2,.9,.25,1.1) both;}
+  .moment.in.al{animation-name:inL;} .moment.in.ar{animation-name:inR;}
+  .moment.out{opacity:0; transform:translateY(-14px) scale(.98); transition:all .28s ease;}
+  @keyframes pop{0%{opacity:0;transform:translateY(24px) scale(.95)}100%{opacity:1;transform:none}}
+  @keyframes inL{0%{opacity:0;transform:translateX(-52px) scale(.97)}100%{opacity:1;transform:none}}
+  @keyframes inR{0%{opacity:0;transform:translateX(52px) scale(.97)}100%{opacity:1;transform:none}}
+  .kicker{font-size:12.5px; letter-spacing:.22em; text-transform:uppercase; color:var(--accent); margin-bottom:18px; font-weight:800;}
+  .prompt{font-family:'Newsreader',Georgia,serif; font-size:clamp(25px,4.6vw,38px); line-height:1.32; font-weight:500; letter-spacing:-.005em;}
+  .sub{font-size:16px; color:var(--ink-dim); margin-top:14px; line-height:1.6; font-weight:600;}
+
+  .cells{display:flex; gap:10px; margin:34px auto 0; justify-content:center; max-width:600px; flex-wrap:wrap;}
+  .cells.num{gap:8px;}
+  .cell{flex:1 1 100px; min-width:66px; min-height:74px; border-radius:16px; cursor:pointer; color:var(--ink);
+    background:var(--paper); border:2px solid var(--line); display:flex; align-items:center; justify-content:center; text-align:center; padding:12px 10px;
+    font-size:14px; font-weight:700; line-height:1.24; box-shadow:0 5px 14px rgba(90,60,150,.08);
+    transition:transform .14s cubic-bezier(.2,.9,.3,1.4), border-color .18s, background .18s, color .18s;}
+  .cells.num .cell{flex:0 0 auto; width:54px; min-width:0; min-height:60px; font-size:18px; border-radius:15px;}
+  .cell:hover{border-color:var(--accent); transform:translateY(-4px);}
+  .cell:active{transform:scale(.93);}
+  .cell.chosen{background:var(--accent); color:#fff; border-color:var(--accent); transform:scale(1.09);}
+  .anchz{display:flex; justify-content:space-between; max-width:600px; margin:12px auto 0; color:var(--ink-dim); font-size:13px; font-weight:700; gap:14px;}
+  .anchz span:last-child{text-align:right;}
+  .rhint{font-size:14px; color:var(--ink-dim); font-weight:500; margin-bottom:4px;}
+  .qblock{margin-top:24px; padding-top:24px; border-top:1px solid var(--line);}
+  .qblock:first-of-type{border-top:none; padding-top:10px;}
+  .qtext{font-family:'Newsreader',Georgia,serif; font-size:clamp(18px,2.6vw,23px); line-height:1.36; font-weight:500;}
+  .qblock .cells{margin-top:16px;}
+  .qblock.focus{background:rgba(120,120,170,.06); border-radius:14px; padding-left:12px; padding-right:12px;}
+  .kbhint{font-size:12px; color:var(--ink-dim); opacity:.7; margin-top:16px; font-weight:600; letter-spacing:.02em;}
+
+  .cards{display:flex; gap:14px; margin-top:32px; justify-content:center; flex-wrap:wrap;}
+  .card{flex:1 1 210px; max-width:340px; min-height:68px; border-radius:20px; cursor:pointer;
+    background:var(--paper); border:2px solid var(--line); color:var(--ink);
+    font-size:16px; font-weight:700; display:flex; align-items:center; justify-content:center; text-align:center; padding:16px 20px;
+    box-shadow:0 6px 16px rgba(90,60,150,.1); transition:transform .16s, border-color .2s, box-shadow .2s;}
+  .card:hover{border-color:var(--accent); transform:translateY(-3px); box-shadow:0 11px 22px rgba(90,60,150,.16);}
+  .card:active{transform:scale(.97);} .card.chosen{background:var(--accent); color:#fff; border-color:var(--accent);}
+  .col{display:flex; flex-direction:column; gap:12px; margin-top:26px; text-align:left;}
+  .col .card{flex:none; max-width:none; min-height:0; padding:16px 20px; justify-content:flex-start; font-size:15.5px; line-height:1.5;}
+  .ol{font-weight:900; color:var(--accent); margin-right:12px; font-size:18px;}
+
+  .field{margin-top:16px; text-align:left;}
+  .field label{display:block; font-size:13px; color:var(--ink-dim); margin-bottom:6px; font-weight:700;}
+  .req{color:var(--accent);}
+  .field input,.field select{width:100%; background:var(--paper); border:2px solid var(--line);
+    border-radius:14px; color:var(--ink); font-size:15px; padding:12px 14px; outline:none; font-family:inherit; font-weight:600;}
+  .field input:focus,.field select:focus{border-color:var(--accent);}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:13px;} @media(max-width:520px){.grid2{grid-template-columns:1fr;}}
+  .dform{max-width:520px; margin:26px auto 0; text-align:left;}
+  .dform .field{margin-top:18px;}
+  .mcq{display:flex; flex-wrap:wrap; gap:8px; margin-top:4px;}
+  .opt{cursor:pointer; border:2px solid var(--line); background:var(--paper); color:var(--ink);
+    border-radius:12px; padding:10px 16px; font-size:14px; font-weight:700; font-family:inherit; transition:.15s;}
+  .opt:hover{border-color:var(--accent);} .opt.sel{background:var(--accent); color:#fff; border-color:var(--accent);}
+  .noisecloud{display:flex; flex-wrap:wrap; gap:9px; justify-content:center; align-items:center; max-width:540px; margin:22px auto 4px;}
+  .npill{background:var(--paper); border:1px solid var(--line); border-radius:14px; padding:7px 13px; font-size:13.5px; font-weight:600;
+    color:var(--ink-dim); box-shadow:0 4px 12px rgba(60,60,110,.07); opacity:0; animation:nz .5s both;}
+  @keyframes nz{to{opacity:1}}
+
+  textarea{display:block; width:min(460px,92vw); margin:22px auto 0; background:var(--paper); border:2px solid var(--line);
+    border-radius:14px; color:var(--ink); font-size:15px; font-family:inherit; padding:14px 16px; line-height:1.5; outline:none; resize:vertical; min-height:104px;}
+  textarea:focus{border-color:var(--accent);} textarea::placeholder{color:var(--ink-dim);}
+  .checkrow{display:flex; gap:11px; align-items:flex-start; margin-top:22px; text-align:left; cursor:pointer;}
+  .checkrow input{margin-top:3px; width:20px; height:20px; accent-color:var(--accent);}
+  .checkrow span{font-size:14px; color:var(--ink-dim); line-height:1.55; font-weight:600;}
+
+  .go{margin-top:32px; display:inline-flex; align-items:center; gap:10px; cursor:pointer;
+    background:var(--accent); color:#fff; font-weight:800; font-size:16px; border:none; border-radius:40px; padding:15px 34px;
+    box-shadow:0 8px 20px rgba(255,122,89,.35); transition:transform .15s ease, opacity .2s, box-shadow .2s;
+    opacity:.45; pointer-events:none;}
+  .go.ready{opacity:1; pointer-events:auto;} .go:hover{transform:translateY(-2px);} .go:active{transform:scale(.96);}
+  .skip{display:block; margin:16px auto 0; color:var(--ink-dim); font-size:14px; background:none; border:none; cursor:pointer; font-weight:700; opacity:.8;}
+  .skip:hover{opacity:1;}
+  .reveal .prompt{font-size:clamp(25px,4.8vw,38px);}
+
+  .breathe{width:130px; height:130px; border-radius:50%; margin:26px auto 0; background:var(--accent);
+    display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:15px;
+    animation:br 5.5s ease-in-out infinite; box-shadow:0 0 46px rgba(255,122,89,.4);}
+  @keyframes br{0%,100%{transform:scale(.72)}50%{transform:scale(1.08)}}
+  .chips{position:relative; height:150px; max-width:560px; margin:6px auto 0;}
+  .chip{position:absolute; background:var(--paper); border-radius:16px; padding:11px 15px; font-size:13.5px; font-weight:700;
+    box-shadow:0 8px 20px rgba(90,60,150,.16); max-width:230px; opacity:0; line-height:1.4;}
+  .chip b{color:var(--accent);}
+  .chip.c0{top:6px; left:2%; animation:cin .6s .3s both;}
+  .chip.c1{top:56px; right:2%; animation:cin2 .6s .9s both;}
+  .chip.c2{top:104px; left:16%; animation:cin .6s 1.5s both;}
+  @keyframes cin{0%{opacity:0;transform:translateX(-30px) scale(.9)}100%{opacity:1;transform:none}}
+  @keyframes cin2{0%{opacity:0;transform:translateX(30px) scale(.9)}100%{opacity:1;transform:none}}
+
+  .overlay{position:absolute; inset:0; z-index:6; display:none; align-items:center; justify-content:center; padding:40px 22px; background:var(--ovl,rgba(250,250,255,.88)); backdrop-filter:blur(7px); -webkit-backdrop-filter:blur(7px); overflow:auto;}
+  .overlay.show{display:flex;}
+  .panel{max-width:600px; text-align:center; margin:auto;}
+  .panel h1{font-family:'Newsreader',Georgia,serif; font-size:clamp(30px,5.6vw,48px); font-weight:500; letter-spacing:-.01em; line-height:1.12;}
+  .panel p{color:var(--ink-dim); font-size:16px; line-height:1.65; margin-top:16px; font-weight:600;}
+  .panel .micro{font-size:13px; opacity:.75; margin-top:18px;}
+  .panel .go{margin-top:28px; opacity:1; pointer-events:auto;}
+  .themes{display:flex; gap:12px; justify-content:center; margin-top:26px; flex-wrap:wrap;}
+  .theme{cursor:pointer; border-radius:18px; border:2px solid var(--line); background:var(--paper);
+    padding:15px 24px; font-size:15.5px; font-weight:800; color:var(--ink); display:flex; align-items:center; gap:10px;
+    box-shadow:0 6px 16px rgba(90,60,150,.1); transition:.18s;}
+  .theme:hover{transform:translateY(-3px);}
+  .theme.sel{border-color:var(--accent); box-shadow:0 8px 20px rgba(255,122,89,.25);}
+  .dot{width:14px; height:14px; border-radius:50%;}
+
+  #artifact{margin:20px auto 4px; display:block; border-radius:20px; background:var(--paper); box-shadow:0 8px 22px rgba(90,60,150,.14); max-width:100%;}
+  .trivia{margin:16px auto 0; max-width:480px; text-align:left;}
+  .trivia .t{display:flex; gap:11px; align-items:flex-start; margin-top:12px; font-size:14.5px; color:var(--ink); line-height:1.55; font-weight:600;}
+  .trivia .t b{color:var(--accent); font-weight:800;}
+  .about{margin:24px auto 0; max-width:520px; text-align:left; border-top:2px solid var(--line); padding-top:20px;}
+  .about h2{font-size:17px; font-weight:800; margin-bottom:8px;}
+  .about p{font-size:14px; color:var(--ink-dim); line-height:1.6; margin-top:6px; font-weight:600;}
+  .about .sig{margin-top:14px; font-size:14px; color:var(--ink); font-weight:700;}
+  .about a{color:var(--accent); font-weight:700;}
+  details{margin:16px auto 0; max-width:460px; text-align:left; color:var(--ink-dim); font-size:12px;}
+  summary{cursor:pointer; color:var(--accent); text-align:center; list-style:none; font-weight:700;}
+  pre{white-space:pre-wrap; word-break:break-word; background:rgba(120,90,190,.06); border:1px solid var(--line);
+    border-radius:12px; padding:12px; margin-top:10px; font-size:10.5px; line-height:1.5; max-height:220px; overflow:auto;}
+  .hint{position:absolute; bottom:16px; left:0; right:0; z-index:3; text-align:center; color:var(--ink-dim); font-size:12px; font-weight:700; opacity:.6; pointer-events:none;}
+  .prog{position:absolute; bottom:14px; right:16px; z-index:3; color:var(--accent); font-size:13px; font-weight:800; opacity:.8;}
+  .sndbtn{position:absolute; bottom:12px; left:14px; z-index:5; cursor:pointer; background:var(--paper); border:1px solid var(--line);
+    color:var(--ink); border-radius:20px; padding:7px 14px; font-size:12px; font-weight:700; opacity:.85; font-family:inherit;}
+  .sndbtn:hover{opacity:1;}
+  @media (prefers-reduced-motion: reduce){ .moment.in{animation:none;opacity:1;} .blob{animation:none;} }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div class="blob b4"></div>
+  <canvas id="scene"></canvas>
+  <div id="grain"></div>
+  <div id="vignette"></div>
+  <canvas id="thread"></canvas>
+  <div id="stage"></div>
+  <div class="hint" id="hint"></div>
+  <div class="prog" id="prog"></div>
+  <button class="sndbtn" id="sndbtn">Sound off</button>
+  <audio id="noise" loop preload="none"></audio>
+  <!-- To add your "decision noise" clip: give the audio a src, e.g. <audio id="noise" src="noise.mp3" loop preload="auto"></audio> -->
+
+
+  <div class="overlay show" id="intro">
+    <div class="panel">
+      <h1>You're about to meet your own mind.</h1>
+      <p id="blurb">The way you make decisions is as distinctive as a fingerprint, and most people never stop to look at theirs. Give it about ten unhurried minutes. Pick a world you like, move at your own pace, and at the end you'll meet a portrait of how you really decide.</p>
+      <p style="margin-top:18px; font-weight:600; color:var(--ink)">Choose the world you'll move through:</p>
+      <div class="themes" id="themePicker">
+        <div class="theme sel" data-th="wallstreet"><span class="dot" style="background:#17c07b"></span>Wall Street</div>
+        <div class="theme" data-th="alaska"><span class="dot" style="background:#3b82c4"></span>Alaska</div>
+        <div class="theme" data-th="amazon"><span class="dot" style="background:#4bd38a"></span>Amazon</div>
+        <div class="theme" data-th="araku"><span class="dot" style="background:#c98b3a"></span>Araku Valley</div>
+        <div class="theme" data-th="jigsaw"><span class="dot" style="background:#ff7a59"></span>Jigsaw</div>
+        <div class="theme" data-th="gameworld"><span class="dot" style="background:#ff3ea5"></span>Game World</div>
+      </div>
+      <button class="go ready" id="beginBtn">Begin <span aria-hidden="true">→</span></button>
+      <p class="micro">Confidential. Saved as you go. Pause and return anytime.</p>
+    </div>
+  </div>
+
+  <div class="overlay" id="resume">
+    <div class="panel">
+      <h1>Welcome back.</h1>
+      <p id="resumeLine">It was still forming. Continue right where you left it.</p>
+      <button class="go ready" id="resumeBtn">Continue <span aria-hidden="true">→</span></button>
+      <button class="skip" id="restartBtn">Start over</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="bye">
+    <div class="panel">
+      <h1>That's completely okay.</h1>
+      <p>No problem at all. Thank you for considering it. You can close this whenever you like.</p>
+    </div>
+  </div>
+
+  <div class="overlay" id="end">
+    <div class="panel">
+      <div class="kicker" id="endKicker">your cosmos</div>
+      <h1 id="endTitle">This one is yours.</h1>
+      <p id="endLine"></p>
+      <canvas id="artifact" width="430" height="250"></canvas>
+      <div class="trivia" id="trivia"></div>
+      <div class="about" id="about"></div>
+      <details><summary>for the research team: the record transmitted</summary><pre id="payload"></pre></details>
+      <button class="go ready" id="againBtn" style="margin-top:14px;">See it form again</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===========================================================
+   CONFIG — the only thing you edit to go live.
+   =========================================================== */
+const CONFIG = {
+  endpoint: "https://script.google.com/macros/s/AKfycbwrGVcX6XICPGcYYC-KmXtTxxa5iXpPVKAueSxgYolycJUnIUfinGVvTHUIuPcSXRWG0w/exec",  /* Google Apps Script Web App collector */
+  studyId: "S-WDMI-v5",
+  researcher: {
+    name: "Jyoti Sharma",
+    signature: "Jyoti Sharma, PhD Scholar (and a questionable decision-maker)",
+    affil: "School of Liberal Arts, IIT Jodhpur",
+    email: "p22hs003@iitj.ac.in",
+    moreLink: ""                /* optional: a page where people can follow the research */
+  }
+};
+
+/* ===========================================================
+   RESPONSE SETS
+   =========================================================== */
+const RESP = {
+  L5:   {labels:["Strongly disagree","Disagree","Neither","Agree","Strongly agree"], vals:[1,2,3,4,5], rev:v=>6-v},
+  REI5: {labels:["Completely false","Mostly false","Neither true nor false","Mostly true","Completely true"], vals:[1,2,3,4,5], rev:v=>6-v},
+  ERQ7: {labels:["Strongly disagree","Disagree","Somewhat disagree","Neutral","Somewhat agree","Agree","Strongly agree"], vals:[1,2,3,4,5,6,7], rev:v=>8-v},
+  BIP9: {num:true, labels:["−4","−3","−2","−1","0","+1","+2","+3","+4"], vals:[-4,-3,-2,-1,0,1,2,3,4], rev:v=>-v, anchorL:"Disagree strongly", anchorR:"Agree strongly"},
+};
+function respOf(it){ return RESP[it.resp||'L5']; }
+
+/* ===========================================================
+   ITEM BANK  (verbatim where provided)
+   =========================================================== */
+/* SD3 · 1–5 · reverse 11,15,17,20,25 */
+const SD3 = [
+  {code:"MACH_01",s:"Mach",q:"It's not wise to tell your secrets."},
+  {code:"MACH_02",s:"Mach",q:"I like to use clever manipulation to get my way."},
+  {code:"MACH_03",s:"Mach",q:"Whatever it takes, you must get the important people on your side."},
+  {code:"MACH_04",s:"Mach",q:"Avoid direct conflict with others because they may be useful in the future."},
+  {code:"MACH_05",s:"Mach",q:"It's wise to keep track of information that you can use against people later."},
+  {code:"MACH_06",s:"Mach",q:"You should wait for the right time to get back at people."},
+  {code:"MACH_07",s:"Mach",q:"There are things you should hide from other people to preserve your reputation."},
+  {code:"MACH_08",s:"Mach",q:"Make sure your plans benefit yourself, not others."},
+  {code:"MACH_09",s:"Mach",q:"Most people can be manipulated."},
+  {code:"NARC_10",s:"Narc",q:"People see me as a natural leader."},
+  {code:"NARC_11",s:"Narc",rev:true,q:"I hate being the center of attention."},
+  {code:"NARC_12",s:"Narc",q:"Many group activities tend to be dull without me."},
+  {code:"NARC_13",s:"Narc",q:"I know that I am special because everyone keeps telling me so."},
+  {code:"NARC_14",s:"Narc",q:"I like to get acquainted with important people."},
+  {code:"NARC_15",s:"Narc",rev:true,q:"I feel embarrassed if someone compliments me."},
+  {code:"NARC_16",s:"Narc",q:"I have been compared to famous people."},
+  {code:"NARC_17",s:"Narc",rev:true,q:"I am an average person."},
+  {code:"NARC_18",s:"Narc",q:"I insist on getting the respect I deserve."},
+  {code:"PSY_19",s:"Psy",q:"I like to get revenge on authorities."},
+  {code:"PSY_20",s:"Psy",rev:true,q:"I avoid dangerous situations."},
+  {code:"PSY_21",s:"Psy",q:"Payback needs to be quick and nasty."},
+  {code:"PSY_22",s:"Psy",q:"People often say I'm out of control."},
+  {code:"PSY_23",s:"Psy",q:"It's true that I can be mean to others."},
+  {code:"PSY_24",s:"Psy",q:"People who mess with me always regret it."},
+  {code:"PSY_25",s:"Psy",rev:true,q:"I have never gotten into trouble with the law."},
+  {code:"PSY_26",s:"Psy",q:"I enjoy having sex with people I hardly know."},
+  {code:"PSY_27",s:"Psy",q:"I'll say anything to get what I want."},
+];
+/* Light Triad · 1–5 · reverse confirmed from source doc */
+const LTS = [
+  {code:"EMP_01",s:"Empathy",rev:true,q:"It is hard for me to see why some things upset people so much."},
+  {code:"EMP_02",s:"Empathy",q:"When someone is feeling 'down' I can usually understand how they feel."},
+  {code:"EMP_03",s:"Empathy",q:"I find it easy to put myself in somebody else's shoes."},
+  {code:"EMP_04",s:"Empathy",rev:true,q:"I have a hard time reading people's emotion."},
+  {code:"COMP_05",s:"Compassion",q:"I often have tender, concerned feelings for people less fortunate than me."},
+  {code:"COMP_06",s:"Compassion",q:"My heart goes out to people who are unhappy."},
+  {code:"COMP_07",s:"Compassion",q:"I would describe myself as a pretty soft-hearted person."},
+  {code:"COMP_08",s:"Compassion",rev:true,q:"Sometimes when people talk about their problems, I feel like I don't care."},
+  {code:"COMP_09",s:"Compassion",q:"If I see someone going through a difficult time, I try to be caring toward that person."},
+  {code:"COMP_10",s:"Compassion",q:"When others feel sadness, I try to comfort them."},
+  {code:"COMP_11",s:"Compassion",rev:true,q:"When others are feeling troubled, I usually let someone else attend to them."},
+  {code:"COMP_12",s:"Compassion",q:"I like to be there for others in times of difficulty."},
+  {code:"ALT_13",s:"Altruism",q:"Volunteering to help someone is very rewarding."},
+  {code:"ALT_14",s:"Altruism",rev:true,q:"I dislike giving directions to strangers who are lost."},
+  {code:"ALT_15",s:"Altruism",q:"Doing volunteer work makes me feel happy."},
+  {code:"ALT_16",s:"Altruism",rev:true,q:"Helping others is usually a waste of time."},
+  {code:"ALT_17",s:"Altruism",rev:true,q:"Helping people does more harm than good because they come to rely on others and not themselves."},
+  {code:"ALT_18",s:"Altruism",rev:true,q:"Unless they are part of my family, helping the elderly isn't my responsibility."},
+  {code:"ALT_19",s:"Altruism",q:"Giving aid to the poor is the right thing to do."},
+  {code:"ALT_20",s:"Altruism",q:"Children should be taught about the importance of helping others."},
+];
+/* REI · 1–5 Completely false→Completely true · reverse 2,3 (rational), 7 (experiential) */
+const REI = [
+  {code:"REI_01",s:"Rational",resp:"REI5",q:"I prefer complex to simple problems."},
+  {code:"REI_02",s:"Rational",resp:"REI5",rev:true,q:"I try to avoid situations that require thinking in depth about something."},
+  {code:"REI_03",s:"Rational",resp:"REI5",rev:true,q:"Thinking is not my idea of fun."},
+  {code:"REI_04",s:"Rational",resp:"REI5",q:"I enjoy switching between abstract concepts and concrete data."},
+  {code:"REI_05",s:"Rational",resp:"REI5",q:"I trust my ability to think logically and systematically."},
+  {code:"REI_06",s:"Experiential",resp:"REI5",q:"I like to rely on my intuitive impressions."},
+  {code:"REI_07",s:"Experiential",resp:"REI5",rev:true,q:"I don't think it is a good idea to rely on voices from within when making important decisions."},
+  {code:"REI_08",s:"Experiential",resp:"REI5",q:"I believe in trusting my hunches."},
+  {code:"REI_09",s:"Experiential",resp:"REI5",q:"Using my gut feelings has usually been a highly effective strategy for me."},
+  {code:"REI_10",s:"Experiential",resp:"REI5",q:"I am quick to form emotional impressions about new information."},
+];
+/* ERQ-S · 1–7 · reappraisal 1,3,5 · suppression 2,4,6 · no reverse */
+const ERQ = [
+  {code:"ERQ_01",s:"Reappraisal",resp:"ERQ7",q:"When I want to feel more positive emotion (such as joy or amusement), I change the way I'm thinking about the situation."},
+  {code:"ERQ_02",s:"Suppression",resp:"ERQ7",q:"I keep my emotions to myself."},
+  {code:"ERQ_03",s:"Reappraisal",resp:"ERQ7",q:"When I want to feel less negative emotion (such as sadness or anger), I change the way I'm thinking about the situation."},
+  {code:"ERQ_04",s:"Suppression",resp:"ERQ7",q:"I control my emotions by not expressing them."},
+  {code:"ERQ_05",s:"Reappraisal",resp:"ERQ7",q:"I control my emotions by changing the way I think about the situation I'm in."},
+  {code:"ERQ_06",s:"Suppression",resp:"ERQ7",q:"When I am feeling negative emotions, I make sure not to express them."},
+];
+/* Social Conformity (TCS) · −4…+4 · reverse (independence-worded): 2,7,9,11  [CONFIRM] */
+const TCS = [
+  {code:"TCS_01",s:"Conformity",resp:"BIP9",q:"I often rely on, and act upon, the advice of others."},
+  {code:"TCS_02",s:"Conformity",resp:"BIP9",rev:true,q:"I would like to be the last one to change my opinion in a heated argument on a controversial topic."},
+  {code:"TCS_03",s:"Conformity",resp:"BIP9",q:"Generally, I'd rather give in and go along for the sake of peace than struggle to have my way."},
+  {code:"TCS_04",s:"Conformity",resp:"BIP9",q:"I tend to follow family tradition in making political decisions."},
+  {code:"TCS_05",s:"Conformity",resp:"BIP9",q:"Basically, my friends are the ones who decide what we do together."},
+  {code:"TCS_06",s:"Conformity",resp:"BIP9",q:"A charismatic and eloquent speaker can easily influence and change my ideas."},
+  {code:"TCS_07",s:"Conformity",resp:"BIP9",rev:true,q:"I am more independent than conforming in my ways."},
+  {code:"TCS_08",s:"Conformity",resp:"BIP9",q:"If someone is very persuasive, I tend to change my opinion and go along with them."},
+  {code:"TCS_09",s:"Conformity",resp:"BIP9",rev:true,q:"I don't give in to others easily."},
+  {code:"TCS_10",s:"Conformity",resp:"BIP9",q:"I tend to rely on others when I have to make an important decision quickly."},
+  {code:"TCS_11",s:"Conformity",resp:"BIP9",rev:true,q:"I prefer to make my own way in life rather than find a group I can follow."},
+];
+/* Status-Based Epistemic Superiority · 1–5 · (6th predictor) */
+const SES = [
+  {code:"SES_01",s:"A",q:"People from other fields just don't know what's good for them."},
+  {code:"SES_02",s:"A",q:"I don't see the point in consulting people who don't have my level of education on important decisions."},
+  {code:"SES_03",s:"A",q:"If someone lacks expertise or status in a matter, their perspective is unlikely to have any value to me."},
+  {code:"SES_04",s:"A",q:"Listening to the opinions of people who haven't achieved what I have is usually a waste of time."},
+  {code:"SES_05",s:"B",q:"I am not very open-minded towards viewpoints different from my own."},
+  {code:"SES_06",s:"B",q:"I mostly consider a topic from my preferred perspective to make up my mind."},
+  {code:"SES_07",s:"B",q:"I pay less attention to the views of people I disagree with."},
+  {code:"SES_08",s:"B",q:"When someone disagrees with me, my first thought is usually that they are wrong."},
+  {code:"SES_09",s:"C",q:"For the most part, others have more to learn from me than I have to learn from them."},
+  {code:"SES_10",s:"C",q:"I am highly confident that my background makes me better suited to make choices for others than they are themselves."},
+  {code:"SES_11",s:"C",q:"I feel small respect for the intellectual capabilities of people who do not share my background/status."},
+];
+/* SAWS · 1–5 · no reverse indicated */
+const SAWS = [
+  {code:"SAWS_01",s:"Wisdom",q:"I have made important decisions throughout my life."},
+  {code:"SAWS_02",s:"Wisdom",q:"Reviewing my past gives me a good perspective on my current concerns."},
+  {code:"SAWS_03",s:"Wisdom",q:"I can easily express my emotions without feeling like I am losing control of the situation."},
+  {code:"SAWS_04",s:"Wisdom",q:"I often recall the past to see if I have changed since then."},
+  {code:"SAWS_05",s:"Wisdom",q:"I am good at identifying subtle emotions in myself."},
+  {code:"SAWS_06",s:"Wisdom",q:"I often use humour to put other people at ease."},
+  {code:"SAWS_07",s:"Wisdom",q:"Now I know I can truly appreciate the little things in life."},
+  {code:"SAWS_08",s:"Wisdom",q:"I have learned valuable life lessons with others."},
+  {code:"SAWS_09",s:"Wisdom",q:"I often wonder about the mysteries of life and what lies beyond death."},
+];
+/* MCSDS · 1–5 · embedded filter (Phase 2) */
+const MCSDS = [
+  {code:"MC_01",s:"SDI",anchor:"true",  q:"I am always a perfect listener, and I completely ignore my personal likes or dislikes when others speak."},
+  {code:"MC_02",s:"SDI",anchor:"true",  q:"I never feel annoyed or upset when someone tells me I have made a mistake."},
+  {code:"MC_03",s:"SDI",anchor:"true",  q:"I have never formed an opinion about a colleague based on office gossip, rumors, or talk."},
+  {code:"MC_04",s:"SDI",anchor:"false", q:"I have sometimes felt jealous of another person's professional achievements, promotions, or good luck."},
+  {code:"MC_05",s:"SDI",anchor:"false", q:"I have sometimes taken the easy way out of a difficult situation instead of doing what was completely right."},
+];
+/* WDM 35 · 1–5 · VERBATIM */
+const WDM = [
+  {code:"M1_01",s:"M1",q:"I can clearly tell whether pressure is coming from the outside situation or from my own tension within me before I decide."},
+  {code:"M1_02",s:"M1",q:"I quickly notice when different mixed motives and desires start influencing my decision."},
+  {code:"M1_03",s:"M1",q:"I check honestly whether I am truly ready to handle the pressure and demands of an important decision."},
+  {code:"M1_04",s:"M1",rev:true,q:"I make quick choices based purely on gut feeling, and only look for logical reasons to defend my choice after it is done."},
+  {code:"M1_05",s:"M1",q:"Before I move forward confidently, I pause to check if my certainty is backed by clear logic or just a sudden urge."},
+  {code:"M2_01",s:"M2",q:"I think deeply about how a decision will affect long-term future outcomes."},
+  {code:"M2_02",s:"M2",q:"I look at the indirect, hidden results of a choice and not just the immediate results."},
+  {code:"M2_03",s:"M2",q:"I check whether a decision can be changed or adjusted later if the situation changes."},
+  {code:"M2_04",s:"M2",rev:true,q:"Under tight deadlines, I focus completely on quick, immediate fixes, ignoring long-term impacts."},
+  {code:"M2_05",s:"M2",q:"I check carefully whether solving one problem today might create unexpected new difficulties tomorrow."},
+  {code:"M3_01",s:"M3",q:"I am able to think clearly and make good choices even when a situation suddenly becomes chaotic and confusing."},
+  {code:"M3_02",s:"M3",q:"I stop false urgency or rushing from forcing me into a quick and incomplete conclusion."},
+  {code:"M3_03",s:"M3",q:"I maintain my calm logic even when external people or senior managers are panicking around me."},
+  {code:"M3_04",s:"M3",rev:true,q:"When under heavy pressure from seniors, bosses, or teammates, my decision clarity drops visibly."},
+  {code:"M3_05",s:"M3",q:"I avoid making quick promises just to escape an uncomfortable or uncertain situation."},
+  {code:"M4_01",s:"M4",q:"I judge decisions fairly without letting my personal wish for a specific outcome cloud my vision."},
+  {code:"M4_02",s:"M4",q:"I am fully willing to rethink and drop a decision, even if I have already spent a lot of time or money on it."},
+  {code:"M4_03",s:"M4",rev:true,q:"Once I publicly support a plan, I keep defending it even if early warning signs show it is failing."},
+  {code:"M4_04",s:"M4",q:"I listen to criticism carefully without automatically trying to protect my past actions."},
+  {code:"M4_05",s:"M4",q:"I easily notice when my personal pride or ego is stopping me from changing a bad decision."},
+  {code:"M5_01",s:"M5",q:"I check whether a decision helps the larger organisation and not just my own private interests."},
+  {code:"M5_02",s:"M5",q:"I consider how my choice will affect multiple different groups involved."},
+  {code:"M5_03",s:"M5",q:"I make sure a choice is morally right, even if bosses, peers, or family are pressuring me to take a shortcut."},
+  {code:"M5_04",s:"M5",rev:true,q:"When high performance is needed, I look out only for my own team's interest even if it causes problems for the whole company."},
+  {code:"M5_05",s:"M5",q:"I prefer decisions that remain helpful and healthy over a long time for the entire system."},
+  {code:"M6_01",s:"M6",q:"I pay attention to my gut feelings or anxiety, but I still rely on facts and analysis to make the final choice."},
+  {code:"M6_02",s:"M6",q:"I actively balance hard numbers and emotional human understanding when making a final choice."},
+  {code:"M6_03",s:"M6",rev:true,q:"I sometimes get so caught up in numbers, data, and targets that I overlook the real human impact of my choice."},
+  {code:"M6_04",s:"M6",q:"I notice immediately when my personal emotions are biasing the way I justify a decision."},
+  {code:"M6_05",s:"M6",q:"I can easily spot when a purely logical plan fails to account for team relationships or cultural expectations."},
+  {code:"M7_01",s:"M7",q:"I look back to review how well I thought out a decision, and not just whether the final result was good or bad."},
+  {code:"M7_02",s:"M7",q:"I think deeply about what my decision mistakes reveal about my general judgment habits."},
+  {code:"M7_03",s:"M7",q:"I revisit and check my original assumptions when new evidence changes my understanding."},
+  {code:"M7_04",s:"M7",rev:true,q:"When a decision turns out badly, my natural first instinct is to blame bad luck, market changes, or other people."},
+  {code:"M7_05",s:"M7",q:"I easily take concrete lessons learned from past decisions and apply them to completely new situations."},
+];
+/* DSQ retained subset · 1–5 · reverse DSQ_03, DSQ_06 */
+const DSQ = [
+  {code:"DSQ_01",s:"Respected",q:"My friends or family seek my advice when they have to make important decisions."},
+  {code:"DSQ_02",s:"Respected",q:"Others seek my help in making their decisions."},
+  {code:"DSQ_03",s:"Confident",rev:true,q:"I feel inferior to most people in making decisions."},
+  {code:"DSQ_04",s:"Confident",q:"I have faith in my decisions."},
+  {code:"DSQ_05",s:"Spontaneous",q:"I make decisions on the spur of the moment."},
+  {code:"DSQ_06",s:"Dependent",rev:true,q:"I do not seek advice from others when making important decisions."},
+  {code:"DSQ_07",s:"Vigilant",q:"I like to consider all the alternatives."},
+  {code:"DSQ_08",s:"Vigilant",q:"When making decisions I like to collect lots of information."},
+  {code:"DSQ_09",s:"Avoidant",q:"I worry that making a decision will close out other options, so I postpone the decision."},
+  {code:"DSQ_10",s:"Brooding",q:"The possibility that some small thing might go wrong causes me to change my mind abruptly."},
+  {code:"DSQ_11",s:"Brooding",q:"When I make decisions, my top priority is to not get 'burned.'"},
+  {code:"DSQ_12",s:"Intuitive",q:"When I make a decision, it is more important for me to feel the decision is right than to have a rational reason for it."},
+  {code:"DSQ_13",s:"Anxious",q:"When making a decision, I am afraid that I might be wrong."},
+  {code:"DSQ_14",s:"Anxious",q:"I can't think straight if I have to make decisions in a hurry."},
+];
+/* SJT · 6 scenarios · weights VERBATIM from V4 master manual · sum 6 to 30 */
+const SJT = [
+  {code:"SJT_1", title:"The Whistleblower's Dilemma",
+   q:"You are a senior data analyst in a major company. You discover that your team's top-selling product contains a coding error. Fixing it will delay the launch by three months. This will cost the company its market advantage and cancel the annual performance bonuses for your entire department. Your manager tells you to keep quiet about it, saying the risk is too small to worry about.",
+   options:[
+     {L:"A",t:"Follow your manager's instruction directly to protect your team's jobs, bonuses, and unity.",w:1},
+     {L:"B",t:"Leak the information anonymously to an external public forum to bypass the company's blocks completely.",w:2},
+     {L:"C",t:"Report the technical issue to the internal audit committee, while creating an optimized engineering schedule to fix the error with minimal launch delay.",w:5},
+     {L:"D",t:"Present the numbers openly to your team, and let everyone take a vote on whether to launch or delay.",w:3},
+     {L:"E",t:"Ask for an immediate transfer to another department to safely distance yourself from any future trouble.",w:2}]},
+  {code:"SJT_2", title:"The Sunk Cost Escalation",
+   q:"You are managing a highly publicized project that has already spent 70% of its budget over two years. A new analysis shows that sudden market shifts have ruined the project's original financial model. A major change is needed to bring real value, but doing so will publicly reveal your early estimation mistakes and draw heavy anger from top executive directors.",
+   options:[
+     {L:"A",t:"Double down on the current track, spending the remaining budget faster to finish before the errors become visible.",w:1},
+     {L:"B",t:"Formally halt all operations, release a report detailing the initial forecasting gaps, and ask an expert panel to design a sustainable pivot.",w:5},
+     {L:"C",t:"Make minor, cosmetic changes to the plan to quiet down critics while continuing on the unviable path.",w:2},
+     {L:"D",t:"Attempt to subtly shift project parameters and financial accountabilities onto a parallel cross-functional department.",w:1},
+     {L:"E",t:"Minimize team meetings and slow down communication to give executive stakeholders time to naturally adjust expectations.",w:2}]},
+  {code:"SJT_3", title:"The Relational Compromise",
+   q:"You lead an elite project team in an organization that heavily values family relationships and hierarchies. A powerful senior executive pressures you to hire their close relative for a critical open job. Your technical assessment shows this candidate completely lacks essential skills, and hiring them will ruin your team's morale. However, rejecting the relative will instantly freeze your department's access to executive resources and project funding.",
+   options:[
+     {L:"A",t:"Hire the candidate to protect your funding, but give them a superficial title with no operational data access.",w:3},
+     {L:"B",t:"Reject the candidate in writing, accuse the senior executive of structural nepotism, and copy the entire leadership team.",w:2},
+     {L:"C",t:"Hire the candidate and assign your top-performing engineer to quietly handle their technical work, keeping the performance gap hidden.",w:1},
+     {L:"D",t:"Meet privately with the executive to explain your team's critical skill needs. Offer the candidate a structured training internship instead, while establishing an objective, independent hiring panel for the core role.",w:5},
+     {L:"E",t:"Comply fully with the hire to avoid conflict, assuming the team will adapt to the candidate's operational limitations over time.",w:1}]},
+  {code:"SJT_4", title:"The Metric-Driven Hijack",
+   q:"Your business unit faces heavy pressure to meet quarterly financial targets. Your operations team reports that meeting these aggressive numbers requires running factory machinery past safe limits, risking a complete infrastructure breakdown within 12 months. Senior leadership states that hitting this quarter's numbers is non-negotiable for the firm's upcoming market valuation.",
+   options:[
+     {L:"A",t:"Push the machinery past limits to hit the targets, planning to request emergency maintenance funds early next year.",w:1},
+     {L:"B",t:"Run the equipment at safe limits, knowingly miss the quarterly target, and accept the immediate career and performance penalties.",w:3},
+     {L:"C",t:"Provide senior leadership with a clear risk trade-off data model. Document the long-term replacement costs versus short-term gains, and propose a blended scheduling model that minimizes equipment strain while meeting critical volume targets.",w:5},
+     {L:"D",t:"Reduce safety monitoring thresholds in the tracking software to ensure automated alarms are not triggered during peak production.",w:1},
+     {L:"E",t:"Resign immediately from the company to avoid being associated with an impending operational failure.",w:2}]},
+  {code:"SJT_5", title:"The Ambiguity Freeze",
+   q:"An unexpected macro-market shift disrupts your project's primary supply chain. You must act immediately, but your data dashboard is completely down, leaving you with conflicting field reports and zero baseline validation numbers. Your team is growing highly anxious and looking to you for immediate direction, but any choice could lead to severe financial penalties if the market environment changes again.",
+   options:[
+     {L:"A",t:"Delay making any decision until full data access is completely restored, regardless of how long the operational freeze lasts.",w:2},
+     {L:"B",t:"Choose a path at random to project absolute confidence and protect team morale, then find data to support it later.",w:1},
+     {L:"C",t:"Acknowledge the lack of clean data to your core team. Gather available field insights, launch a small, low-risk pilot option to test supply channels, and build a real-time feedback loop to adjust your strategy as facts emerge.",w:5},
+     {L:"D",t:"Order your team to follow the outdated project plan, arguing that consistency is more important than adapting to temporary market shifts.",w:1},
+     {L:"E",t:"Delegate the final operational decision to a junior team lead to protect yourself from any accountability if the project fails.",w:1}]},
+  {code:"SJT_6", title:"The In-Group Extraction Chaos",
+   q:"During a critical corporate restructuring, you discover your close colleagues are quietly organizing an internal strategy to protect their own department's funding. Their plan involves systematically withholding performance data from a sister department, which will severely damage the company's overall operational health but safeguard your immediate team's jobs and bonuses.",
+   options:[
+     {L:"A",t:"Participate fully in the strategy to show loyalty to your colleagues and protect your team's financial security.",w:1},
+     {L:"B",t:"Report your colleagues to senior human resources immediately without discussing it with them first.",w:2},
+     {L:"C",t:"Refuse to participate in withholding data. Meet with your colleagues to demonstrate how their plan hurts long-term company stability, and help them draft an alternative restructuring proposal based on shared resources and cross-department collaboration.",w:5},
+     {L:"D",t:"Stay completely neutral by refusing to help your colleagues while keeping quiet about their plan to avoid personal workplace conflict.",w:3},
+     {L:"E",t:"Leak your department's hidden data directly to the sister business unit anonymously to disrupt your colleagues' strategy.",w:3}]},
+];
+
+/* ===========================================================
+   ADMINISTRATION ORDER (per final flow). Item order within each
+   scale is randomised at runtime to reduce order effects.
+   pace: reverse items auto-split to a solo screen.
+   =========================================================== */
+const SECTIONS = [
+  {id:"consent"},
+  {id:"belief"},
+  {id:"demo"},
+  {id:"breather"},
+  {id:"scale", scale:SD3, pace:5},
+  {id:"scale", scale:LTS, pace:5},
+  {id:"scale", scale:REI, pace:5},
+  {id:"scale", scale:ERQ, pace:3},
+  {id:"scale", scale:TCS, pace:3},
+  {id:"scale", scale:SES, pace:5},
+  {id:"reveal", k:"a pattern is forming", q:"Something about you is already taking shape.", sub:"Most people never see this in themselves. Keep going."},
+  {id:"scale", scale:SAWS, pace:3},
+  {id:"scale", scale:MCSDS, pace:5},
+  {id:"reveal", k:"the heart of it", q:"This is where the real portrait forms.", sub:"You're closer to the picture than you think."},
+  {id:"scale", scale:WDM, pace:5},
+  {id:"reveal", k:"the moment of truth", q:"Now, a few real situations.", sub:"Not what you should do. What you would."},
+  {id:"sjt"},
+  {id:"scale", scale:DSQ, pace:5},
+];
+
+/* ===========================================================
+   THREE PREMIUM WORLDS
+   =========================================================== */
+/* Three concept-linked worlds: the faculties people lean on when they decide.
+   Aesthetic choice only (recorded in payload) — never changes items or order. */
+const THEMES = {
+  wallstreet:{scene:"wall",   sound:"ticker", mode:"tide",      accent:"#17c07b", accent2:"#e8b84b", ink:"#e8eef2", dim:"#8ea0ad", paper:"rgba(255,255,255,.07)", line:"rgba(255,255,255,.14)", bgA:"#0a1622", bgB:"#0c241d", ovl:"rgba(6,12,20,.86)",  kicker:"the trading floor"},
+  alaska:{scene:"alaska",     sound:"wind",   mode:"cosmos",    accent:"#3b82c4", accent2:"#7fb0e0", ink:"#1b2a44", dim:"#5f7091", paper:"#ffffff", line:"rgba(40,70,120,.14)", bgA:"#eef5fc", bgB:"#dbe9f7", ovl:"rgba(235,243,251,.9)", kicker:"the far north"},
+  amazon:{scene:"amazon",     sound:"jungle", mode:"heartwood", accent:"#4bd38a", accent2:"#d7e86b", ink:"#e7f5ec", dim:"#8fb59d", paper:"rgba(255,255,255,.07)", line:"rgba(255,255,255,.14)", bgA:"#0c2a1c", bgB:"#123c26", ovl:"rgba(6,22,14,.86)",  kicker:"the rainforest"},
+  araku:{scene:"araku",       sound:"birds",  mode:"heartwood", accent:"#3f9d5f", accent2:"#c98b3a", ink:"#22402c", dim:"#5c7a63", paper:"#ffffff", line:"rgba(40,90,50,.14)", bgA:"#eef6ec", bgB:"#dfeede", ovl:"rgba(235,244,232,.9)", kicker:"the coffee hills"},
+  jigsaw:{scene:"jigsaw",     sound:"clicks", mode:"cosmos",    accent:"#ff7a59", accent2:"#4a6ff0", ink:"#33324a", dim:"#6f6e90", paper:"#ffffff", line:"rgba(60,60,110,.14)", bgA:"#fbf7f0", bgB:"#eef0fb", ovl:"rgba(248,246,250,.9)", kicker:"the puzzle"},
+  gameworld:{scene:"game",    sound:"arcade", mode:"cosmos",    accent:"#ff3ea5", accent2:"#35e0ff", ink:"#eaf0ff", dim:"#9aa6d4", paper:"rgba(255,255,255,.08)", line:"rgba(255,255,255,.16)", bgA:"#120826", bgB:"#1b0b30", ovl:"rgba(10,5,24,.86)",  kicker:"player one"},
+};
+let theme = THEMES.wallstreet;
+function applyTheme(name){
+  theme = THEMES[name] || THEMES.wallstreet;
+  const r=document.documentElement.style;
+  r.setProperty('--accent',theme.accent); r.setProperty('--accent2',theme.accent2);
+  r.setProperty('--ink',theme.ink); r.setProperty('--ink-dim',theme.dim);
+  r.setProperty('--paper',theme.paper); r.setProperty('--line',theme.line); r.setProperty('--ovl',theme.ovl);
+  const dark = theme.paper.charAt(0)!=='#';
+  r.setProperty('--scrim', dark?'rgba(4,10,16,.42)':'rgba(255,255,255,.52)');
+  r.setProperty('--scrimEdge', dark?'rgba(0,0,0,.4)':'rgba(70,85,120,.09)');
+  document.body.style.background='linear-gradient(160deg,'+theme.bgA+' 0%,'+theme.bgB+' 100%)';
+  resize();
+  try{ Sound.setTheme(theme.sound); }catch(e){}
+}
+
+/* ===========================================================
+   STATE + PERSISTENCE
+   =========================================================== */
+const KEY="swdmi_v5";
+let state={ idx:0, theme:"wallstreet", id:null, startedAt:null, consent:null, demo:{}, belief:null, beliefText:"", answers:{}, nodes:[], order:{} };
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+function load(){ try{ const r=localStorage.getItem(KEY), o=r?JSON.parse(r):null;
+  if(o && typeof o.idx==='number' && o.answers) return o; return null; }catch(e){ return null; } }
+function newId(){ return 'r_'+Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4); }
+function fresh(th){ return {idx:0, theme:th, id:newId(), startedAt:Date.now(), consent:null, demo:{}, belief:null, beliefText:"", answers:{}, nodes:[], order:{}}; }
+/* deterministic shuffle per scale (seed by id) so resume keeps the same order */
+function seededOrder(key, n){
+  if(state.order[key]) return state.order[key];
+  let seed=0; const s=(state.id||'x')+key; for(let i=0;i<s.length;i++) seed=(seed*31+s.charCodeAt(i))>>>0;
+  const idxs=[...Array(n).keys()];
+  for(let i=n-1;i>0;i--){ seed=(seed*1103515245+12345)>>>0; const j=seed%(i+1); [idxs[i],idxs[j]]=[idxs[j],idxs[i]]; }
+  state.order[key]=idxs; return idxs;
+}
+
+/* ===========================================================
+   BUILD SCREENS
+   =========================================================== */
+let SCREENS=[];
+function buildScreens(){
+  SCREENS=[];
+  for(const sec of SECTIONS){
+    if(sec.id==="consent") SCREENS.push({kind:"consent"});
+    else if(sec.id==="belief") SCREENS.push({kind:"belief"});
+    else if(sec.id==="demo"){ SCREENS.push({kind:"demo",part:1}); SCREENS.push({kind:"demo",part:2}); }
+    else if(sec.id==="reveal") SCREENS.push({kind:"reveal",k:sec.k,q:sec.q,sub:sec.sub});
+    else if(sec.id==="breather") SCREENS.push({kind:"breather"});
+    else if(sec.id==="sjt") SJT.forEach(sc=>SCREENS.push({kind:"sjt",sc}));
+    else if(sec.id==="scale"){
+      const list=sec.scale, key=list[0].code.split('_')[0], ord=seededOrder(key,list.length);
+      const items=ord.map(i=>list[i]); const n=sec.pace||5; let buf=[];
+      const flush=()=>{ if(buf.length){ SCREENS.push({kind:"items",items:buf}); buf=[]; } };
+      for(const it of items){ if(it.rev){ flush(); SCREENS.push({kind:"items",items:[it]}); }  // reverse item = its own screen
+        else { buf.push(it); if(buf.length>=n) flush(); } }                                       // others grouped into a round
+      flush();
+    }
+  }
+}
+
+const app=document.getElementById('app'), stage=document.getElementById('stage'),
+      hint=document.getElementById('hint'), prog=document.getElementById('prog');
+let tStart=0;
+
+/* ===========================================================
+   BACKGROUND: soft CSS blobs (aurora + drift) + a faint constellation
+   that grows with every answer (living progress) + grain overlay.
+   =========================================================== */
+const scn=document.getElementById('scene'), gx=scn.getContext('2d');
+let dpr=Math.min(devicePixelRatio||1,2), W=1, H=1;
+const rnd=m=>Math.random()*m;
+let P={snow:[],rise:[],rain:[],birds:[],pieces:[],tk:[]};
+function dims(){ return {w:app.clientWidth||innerWidth, h:app.clientHeight||innerHeight}; }
+function initScene(){
+  P.snow=[]; for(let i=0;i<Math.min(150, W*H/9000); i++) P.snow.push({x:rnd(W),y:rnd(H),r:(rnd(1.6)+.5)*dpr,s:rnd(.5)+.2,d:rnd(1)-.5});
+  P.rise=[]; for(let i=0;i<40;i++) P.rise.push({x:rnd(W),y:rnd(H),r:(rnd(1.8)+.7)*dpr,s:rnd(.4)+.1,ph:rnd(6.28)});
+  P.rain=[]; for(let i=0;i<70;i++) P.rain.push({x:rnd(W),y:rnd(H),l:(rnd(12)+8)*dpr,s:rnd(5)+7});
+  P.birds=[]; for(let i=0;i<6;i++) P.birds.push({x:rnd(W),y:rnd(H*.4)+H*.08,s:(rnd(.3)+.15)*dpr,ph:rnd(6.28)});
+  const cols=['#ff7a59','#4a6ff0','#2bb673','#e8b84b','#b18bff'];
+  P.pieces=[]; for(let i=0;i<8;i++) P.pieces.push({x:rnd(W),y:rnd(H),s:(rnd(28)+38)*dpr,rot:rnd(6.28),vr:(rnd(1)-.5)*.003,vx:(rnd(1)-.5)*.3*dpr,vy:(rnd(1)-.5)*.3*dpr,c:cols[i%cols.length]});
+  const syms=['AAPL','TSLA','NIFTY','BTC','INFY','AMZN','GOOG','SPX','ORCL','GLD'];
+  P.tk=syms.map(s=>({s,up:Math.random()<.5,v:(rnd(4)+.1).toFixed(2)}));
+}
+function resize(){ const {w,h}=dims(); W=scn.width=Math.max(1,w*dpr); H=scn.height=Math.max(1,h*dpr); scn.style.width=w+'px'; scn.style.height=h+'px'; initScene(); sizeThread(); }
+function bgFill(a,b){ const g=gx.createLinearGradient(0,0,0,H); g.addColorStop(0,a); g.addColorStop(1,b); gx.fillStyle=g; gx.fillRect(0,0,W,H); }
+function ridge(baseY,amp,fill,seed,t){ gx.fillStyle=fill; gx.beginPath(); gx.moveTo(0,H); for(let x=0;x<=W;x+=22*dpr){ const y=baseY - Math.sin(x*0.005+seed+t*0.0002)*amp - Math.abs(Math.sin(x*0.013+seed))*amp*0.4; gx.lineTo(x,y);} gx.lineTo(W,H); gx.closePath(); gx.fill(); }
+function draw(t){
+  const s=theme.scene;
+  if(s==='wall') sWall(t); else if(s==='alaska') sAlaska(t); else if(s==='amazon') sAmazon(t);
+  else if(s==='araku') sAraku(t); else if(s==='jigsaw') sJigsaw(t); else if(s==='game') sGame(t); else bgFill(theme.bgA,theme.bgB);
+  requestAnimationFrame(draw);
+}
+function sWall(t){ bgFill('#0a1622','#0c241d');
+  gx.fillStyle='rgba(255,255,255,.035)'; const bw=64*dpr; for(let x=0;x<W;x+=bw){ const h=(70+((x*0.37)%170))*dpr; gx.fillRect(x,H-h,bw-6*dpr,h); }
+  const base=H*0.6; let px=0,py=base;
+  for(let i=1;i<=44;i++){ const x=i/44*W, y=base+Math.sin(i*0.5+t*0.0006)*44*dpr+((i*37)%60-30)*dpr;
+    gx.strokeStyle=y<py?'rgba(23,192,123,.55)':'rgba(232,103,90,.55)'; gx.lineWidth=2*dpr; gx.beginPath(); gx.moveTo(px,py); gx.lineTo(x,y); gx.stroke(); px=x;py=y; }
+  gx.fillStyle='rgba(0,0,0,.22)'; gx.fillRect(0,18*dpr,W,40*dpr);
+  gx.font=`${15*dpr}px Inter,sans-serif`; gx.textBaseline='middle';
+  let cx=-((t*0.09*dpr)%(260*dpr)), k=0;
+  while(cx<W && k<70){ const it=P.tk[k%P.tk.length], str=`${it.s} ${it.up?'▲':'▼'}${it.v}`; gx.fillStyle=it.up?'#17c07b':'#e8675a'; gx.fillText(str,cx,38*dpr); cx+=gx.measureText(str).width+40*dpr; k++; }
+}
+function sAlaska(t){ bgFill('#eef5fc','#dbe9f7');
+  const sg=gx.createRadialGradient(W*.78,H*.2,0,W*.78,H*.2,W*.32); sg.addColorStop(0,'rgba(255,255,255,.8)'); sg.addColorStop(1,'rgba(255,255,255,0)'); gx.fillStyle=sg; gx.fillRect(0,0,W,H);
+  ridge(H*.7,110*dpr,'rgba(150,175,205,.5)',0.5,0); ridge(H*.82,80*dpr,'rgba(120,150,190,.5)',2.0,0);
+  gx.fillStyle='rgba(255,255,255,.92)';
+  for(const f of P.snow){ f.y+=f.s*dpr; f.x+=Math.sin(t*0.001+f.y*0.01)*0.3+f.d; if(f.y>H)f.y=-4; if(f.x<0)f.x=W; if(f.x>W)f.x=0; gx.beginPath(); gx.arc(f.x,f.y,f.r,0,7); gx.fill(); }
+}
+function sAmazon(t){ bgFill('#0c2a1c','#123c26');
+  for(let l=0;l<3;l++) ridge(H-(50+l*46)*dpr, 20*dpr, `rgba(18,${55+l*22},38,.6)`, l*1.6, t);
+  for(const p of P.rise){ p.y-=p.s*dpr; p.x+=Math.sin(t*0.0008+p.ph)*0.5; if(p.y<-3){p.y=H+3;p.x=rnd(W);} const a=.35+.6*Math.abs(Math.sin(t*0.002+p.ph)); const g=gx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*4); g.addColorStop(0,`rgba(215,232,107,${a})`); g.addColorStop(1,'rgba(215,232,107,0)'); gx.fillStyle=g; gx.beginPath(); gx.arc(p.x,p.y,p.r*4,0,7); gx.fill(); }
+  gx.strokeStyle='rgba(190,225,205,.12)'; gx.lineWidth=dpr; for(const r of P.rain){ r.y+=r.s*dpr; r.x-=r.s*.25*dpr; if(r.y>H){r.y=-10;r.x=rnd(W);} gx.beginPath(); gx.moveTo(r.x,r.y); gx.lineTo(r.x-3*dpr,r.y+r.l); gx.stroke(); }
+}
+function sAraku(t){ bgFill('#eef6ec','#dfeede');
+  const sg=gx.createRadialGradient(W*.2,H*.18,0,W*.2,H*.18,W*.3); sg.addColorStop(0,'rgba(255,240,200,.85)'); sg.addColorStop(1,'rgba(255,240,200,0)'); gx.fillStyle=sg; gx.fillRect(0,0,W,H);
+  ridge(H*.62,34*dpr,'#a8c99a',0.3,t*0.5); ridge(H*.74,30*dpr,'#88b57f',2.1,t*0.6); ridge(H*.86,26*dpr,'#6a9a63',4.0,t*0.7);
+  gx.strokeStyle='rgba(60,80,60,.5)'; gx.lineWidth=2*dpr; for(const b of P.birds){ b.x+=b.s+0.4*dpr; if(b.x>W+20*dpr)b.x=-20*dpr; const y=b.y+Math.sin(t*0.002+b.ph)*8*dpr, w=12*dpr; gx.beginPath(); gx.moveTo(b.x-w,y); gx.quadraticCurveTo(b.x,y-w*.5,b.x,y); gx.quadraticCurveTo(b.x,y-w*.5,b.x+w,y); gx.stroke(); }
+}
+function sJigsaw(t){ bgFill('#fbf7f0','#eef0fb');
+  for(const p of P.pieces){ p.x+=p.vx; p.y+=p.vy; p.rot+=p.vr; const s=p.s; if(p.x<-s)p.x=W+s; if(p.x>W+s)p.x=-s; if(p.y<-s)p.y=H+s; if(p.y>H+s)p.y=-s;
+    gx.save(); gx.translate(p.x,p.y); gx.rotate(p.rot); gx.globalAlpha=.2; gx.fillStyle=p.c; piece(s); gx.globalAlpha=1; gx.restore(); }
+}
+function piece(s){ const k=s*0.2, h=s/2; gx.beginPath(); gx.moveTo(-h,-h); gx.lineTo(-k,-h); gx.arc(0,-h,k,Math.PI,0,true); gx.lineTo(h,-h); gx.lineTo(h,-k); gx.arc(h,0,k,-Math.PI/2,Math.PI/2,false); gx.lineTo(h,h); gx.lineTo(-h,h); gx.closePath(); gx.fill(); }
+function sGame(t){ bgFill('#120826','#1b0b30');
+  const cx=W/2, cy=H*0.4, r=W*0.1; const sg=gx.createLinearGradient(0,cy-r,0,cy+r); sg.addColorStop(0,'#ff3ea5'); sg.addColorStop(1,'#ffb03a'); gx.fillStyle=sg; gx.beginPath(); gx.arc(cx,cy,r,Math.PI,0); gx.closePath(); gx.fill();
+  gx.fillStyle='#120826'; for(let i=1;i<=5;i++) gx.fillRect(cx-r,cy-r+ i*r*0.17, r*2, Math.max(1.5,r*0.055));
+  gx.strokeStyle='rgba(53,224,255,.35)'; gx.lineWidth=dpr; const hz=H*0.58;
+  for(let i=0;i<=12;i++){ const x=i/12*W; gx.beginPath(); gx.moveTo(x,hz); gx.lineTo(cx+(x-cx)*5,H); gx.stroke(); }
+  const span=H-hz; for(let j=0;j<11;j++){ const f=(j+((t*0.0004)%1))/11; const y=hz+span*f*f; gx.beginPath(); gx.moveTo(0,y); gx.lineTo(W,y); gx.stroke(); }
+}
+
+/* ===========================================================
+   THREAD
+   =========================================================== */
+const thread=document.getElementById('thread'), tc=thread.getContext('2d');
+function sizeThread(){ const w=dims().w; thread.width=Math.max(1,w*dpr); thread.height=70*dpr; thread.style.width=w+'px'; thread.style.height='70px'; }
+function rgb(hex){ const n=parseInt(hex.slice(1),16); return [n>>16&255,n>>8&255,n&255].join(','); }
+function drawThread(){
+  const n=SCREENS.length||1, done=state.idx, ac=rgb(theme.accent), a2=rgb(theme.accent2);
+  tc.clearRect(0,0,thread.width,thread.height);
+  const pad=42*dpr, w=thread.width-pad*2, y=40*dpr; let prev=null; const step=Math.max(1,Math.round(n/26));
+  for(let i=0;i<n;i+=step){ const x=pad+w*(i/(n-1)), yy=y+Math.sin(i*0.9)*9*dpr, lit=i<done;
+    if(prev&&lit){ tc.beginPath(); tc.moveTo(prev.x,prev.y); tc.lineTo(x,yy); tc.strokeStyle=`rgba(${ac},.6)`; tc.lineWidth=dpr; tc.stroke(); }
+    if(lit) prev={x,y:yy};
+    tc.beginPath(); tc.arc(x,yy,(lit?3.2:1.5)*dpr,0,7); tc.fillStyle=lit?`rgba(${a2},.95)`:`rgba(${ac},.22)`; tc.fill(); }
+}
+
+/* ===========================================================
+   RENDER
+   =========================================================== */
+function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function setProg(){
+  if(state.idx<=0||state.idx>=SCREENS.length){ prog.textContent=''; return; }
+  const f=state.idx/SCREENS.length;
+  prog.textContent = f<.25?'building your profile' : f<.5?'the picture is forming' : f<.72?'this is where it gets interesting' : f<.9?'your result is taking shape' : 'almost there';
+}
+function render(){
+  if(state.idx>=SCREENS.length) return finish();
+  drawThread(); setProg();
+  const sc=SCREENS[state.idx];
+  hint.textContent = '';
+  const el=document.createElement('div'); el.className='moment'+(sc.kind==='reveal'?' reveal':'');
+  if(sc.kind==='consent') renderConsent(el);
+  else if(sc.kind==='reveal') renderReveal(el,sc);
+  else if(sc.kind==='breather') renderBreather(el);
+  else if(sc.kind==='belief') renderBelief(el);
+  else if(sc.kind==='demo') renderDemo(el,sc.part);
+  else if(sc.kind==='items') renderItems(el,sc.items);
+  else if(sc.kind==='sjt') renderSJT(el,sc.sc);
+  stage.innerHTML=''; stage.appendChild(el); tStart=performance.now();
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ el.classList.add('in'); if(sc.kind==='items') el.classList.add(state.idx%2?'ar':'al'); }));
+}
+function advance(el){ el.classList.remove('in'); el.classList.add('out'); state.idx++; save(); setTimeout(render,420); }
+function addNode(val){ const i=state.nodes.length, ang=i*2.39996, rad=0.30+(i/Math.max(SCREENS.length,1))*0.44;
+  state.nodes.push({x:0.5+Math.cos(ang)*rad*0.74, y:0.5+Math.sin(ang)*rad*0.56, val:(val==null?55:val), mag:(val==null?.85:.55+val/200)}); }
+
+function renderConsent(el){
+  el.innerHTML=`<div class="kicker">before we begin</div>
+    <div class="prompt">Do you consent to take part?</div>
+    <p class="sub">This is doctoral research into how people really make decisions. Whatever you share stays strictly confidential, is used only for academic study, and is never used anywhere without your say-so. No sensitive results, no judgement, just honest curiosity about the way you think.</p>
+    <label class="checkrow"><input type="checkbox" id="share" checked><span>I'm happy for my anonymised responses to be used in the findings. Uncheck if you'd rather we didn't, that's completely fine.</span></label>
+    <button class="go ready" id="goBtn" style="margin-top:24px">Yes, I consent <span aria-hidden="true">→</span></button>
+    <button class="skip" id="no">I'd rather not take part</button>`;
+  el.querySelector('#goBtn').addEventListener('click',()=>{
+    state.consent={participate:true, shareAnonymised:el.querySelector('#share').checked, at:new Date().toISOString()}; save(); advance(el); });
+  el.querySelector('#no').addEventListener('click',()=>{ state.consent={participate:false, at:new Date().toISOString()}; save(); show('bye'); });
+}
+function renderReveal(el,sc){
+  el.innerHTML=(sc.k?`<div class="kicker">${esc(sc.k)}</div>`:'')+`<div class="prompt">${esc(sc.q)}</div>`+(sc.sub?`<div class="sub">${esc(sc.sub)}</div>`:'')
+    +`<button class="go ready" id="goBtn" style="margin-top:34px;">Keep going <span aria-hidden="true">→</span></button>`;
+  el.querySelector('#goBtn').addEventListener('click',()=>advance(el));
+}
+function renderBreather(el){
+  const noise=["Good decision.","Bad decision.","Trust your gut?","Analysis paralysis","The Paradox of Choice","Nudge","Sunk cost fallacy","Blink","Head vs. heart","10 ways to decide better","Predictably Irrational","What would you do?"];
+  const pills=noise.map((t,i)=>`<span class="npill" style="animation-delay:${(i*0.08).toFixed(2)}s; transform:rotate(${(Math.random()*6-3).toFixed(1)}deg)">${t}</span>`).join('');
+  el.innerHTML=`<div class="kicker">a breath before we start</div>
+    <div class="prompt">There's so much noise about how to decide.</div>
+    <p class="sub">Good, bad, ugly. Ten ways to get it right. Just tune it out for a moment.</p>
+    <div class="noisecloud">${pills}</div>
+    <div class="breathe">breathe</div>
+    <div class="prompt" style="font-size:clamp(19px,3.2vw,26px); margin-top:30px">Ready to find out who <i>you</i> are as a decision-maker?</div>
+    <button class="go ready" id="goBtn" style="margin-top:16px">Let's begin <span aria-hidden="true">→</span></button>`;
+  const au=document.getElementById('noise'); if(au&&au.getAttribute('src')){ try{ au.currentTime=0; const p=au.play&&au.play(); if(p&&p.catch)p.catch(()=>{}); }catch(e){} }
+  el.querySelector('#goBtn').addEventListener('click',()=>{ if(au){try{au.pause();}catch(e){}} advance(el); });
+}
+function renderBelief(el){
+  el.innerHTML=`<div class="kicker">to begin</div><div class="prompt">Some people are born better decision-makers than others.</div>
+    <div class="sub">Do you believe this?</div>
+    <div id="b" style="display:flex; flex-direction:column; gap:10px; max-width:440px; margin:26px auto 0">
+      ${["Yes, I believe so","Unsure","No, I do not believe so"].map((x,i)=>`<div class="card" data-i="${i}" style="min-height:0; padding:16px 20px">${x}</div>`).join('')}
+    </div>
+    <div class="kbhint">tap, or press 1, 2 or 3</div>
+    <textarea id="bt" rows="3" placeholder="Share your thinking, if you like (optional)"></textarea>
+    <div><button class="go ready" id="goBtn">Continue <span aria-hidden="true">→</span></button></div>`;
+  let picked=null;
+  el.querySelectorAll('#b .card').forEach(c=>c.addEventListener('click',()=>{ el.querySelectorAll('#b .card').forEach(x=>x.classList.remove('chosen')); c.classList.add('chosen'); picked=+c.dataset.i; }));
+  el.querySelector('#goBtn').addEventListener('click',()=>{ state.belief=picked==null?null:[3,2,1][picked]; state.beliefText=el.querySelector('#bt').value.trim(); save(); addNode(null); advance(el); });
+}
+const DEMO1=[["name","Full name (optional)",{opt:true}],["age","Age (years)","number"],
+  ["gender","Gender identity",["Female","Male","Other","Prefer not to say"]],
+  ["marital","Marital status",["Single","Married","Divorced / Separated","Widowed"]],
+  ["family","Family style",["Nuclear family","Joint / Extended family","Living alone / Other"]],
+  ["geo","Geographic background",["Urban","Semi-Urban","Rural"]]];
+const DEMO2=[["edu","Highest educational qualification","text"],["profession","Profession / primary occupation","text"],
+  ["designation","Current designation / role","text"],["experience","Total professional experience (e.g., 5 years 3 months)","text"],
+  ["sector","Industry sector / academic department","text"],
+  ["incomeSlab","Income slab (self or family)",["Lower Income Group (LIG)","Middle Income Group (MIG)","Higher Income Group (HIG)"]],
+  ["income","Estimated monthly / annual income","text"]];
+function field(f){ const [k,lab,type]=f, opt=(type&&type.opt); const star=opt?'':' <span class="req">*</span>';
+  if(Array.isArray(type)) return `<div class="field"><label>${lab}${star}</label><div class="mcq" data-k="${k}" data-req="${opt?0:1}">${type.map(o=>`<button type="button" class="opt${state.demo[k]===o?' sel':''}" data-val="${esc(o)}">${esc(o)}</button>`).join('')}</div></div>`;
+  const tp=(type&&type.opt)?'text':type;
+  return `<div class="field"><label>${lab}${star}</label><input data-k="${k}" data-req="${opt?0:1}" type="${tp}" value="${esc(state.demo[k]||'')}"></div>`; }
+function renderDemo(el,part){
+  const fields=(part===1?DEMO1:DEMO2);
+  el.innerHTML=`<div class="prompt">${part===1?'But first, the basics.':'For context.'}</div>
+    <p class="sub">${part===1?'Quick and completely private. No grades, no judgement, no right answers.':'Almost there. Same deal, all kept in strict confidence.'}</p>
+    <div class="dform">${fields.map(field).join('')}</div>
+    <button class="go" id="goBtn" style="margin-top:24px">Continue <span aria-hidden="true">→</span></button>`;
+  const go=el.querySelector('#goBtn');
+  const check=()=>{ let ok=true;
+    el.querySelectorAll('input[data-k]').forEach(inp=>{ if(inp.dataset.req==='1' && !String(inp.value).trim()) ok=false; });
+    el.querySelectorAll('.mcq[data-req="1"]').forEach(m=>{ if(!state.demo[m.dataset.k]) ok=false; });
+    go.classList.toggle('ready',ok); };
+  el.querySelectorAll('input[data-k]').forEach(inp=>inp.addEventListener('input',()=>{ state.demo[inp.dataset.k]=inp.value; save(); check(); }));
+  el.querySelectorAll('.mcq').forEach(m=>m.querySelectorAll('.opt').forEach(b=>b.addEventListener('click',()=>{
+    m.querySelectorAll('.opt').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); state.demo[m.dataset.k]=b.dataset.val; save(); check(); })));
+  check();
+  go.addEventListener('click',()=>{ if(!go.classList.contains('ready')) return; if(part===2) addNode(null); advance(el); });
+}
+function renderItems(el,items){
+  const solo=items.length===1, R=respOf(items[0]), cls=R.num?'cells num':'cells';
+  const anch=R.anchorL?`<div class="anchz"><span>${esc(R.anchorL)}</span><span>${esc(R.anchorR)}</span></div>`:'';
+  const row=(qi)=>`<div class="${cls}" data-c="${qi}">${R.labels.map((x,i)=>`<div class="cell" data-i="${i}">${esc(x)}</div>`).join('')}</div>${anch}`;
+  let html;
+  if(solo){ html=`<div class="prompt">${esc(items[0].q)}</div>${row(0)}<div class="kbhint">tap, or press a number key</div>`; }
+  else{ html=`<p class="rhint">Read each and tap how true it feels. You can also use the number keys, then Enter.</p>`
+    +items.map((m,qi)=>`<div class="qblock"><div class="qtext">${esc(m.q)}</div>${row(qi)}</div>`).join('')
+    +`<button class="go" id="goBtn" style="margin-top:28px">Continue <span aria-hidden="true">→</span></button>`; }
+  el.innerHTML=html;
+  const chosen={};
+  const commit=()=>items.forEach((m,qi)=>{ if(chosen[qi]!=null) record(m, R.vals[chosen[qi]]); });
+  el.querySelectorAll('.cells').forEach(rw=>{ const qi=+rw.dataset.c;
+    rw.querySelectorAll('.cell').forEach(c=>c.addEventListener('click',()=>{
+      rw.querySelectorAll('.cell').forEach(x=>x.classList.remove('chosen')); c.classList.add('chosen'); chosen[qi]=+c.dataset.i;
+      if(solo){ if(el.dataset.lock)return; el.dataset.lock=1; commit(); setTimeout(()=>advance(el),300); }
+      else{ highlightFocus(el); if(Object.keys(chosen).length>=items.length) el.querySelector('#goBtn').classList.add('ready'); }
+    })); });
+  if(!solo){ highlightFocus(el); el.querySelector('#goBtn').addEventListener('click',()=>{ if(Object.keys(chosen).length<items.length) return; commit(); advance(el); }); }
+}
+function highlightFocus(el){
+  const blocks=[...el.querySelectorAll('.qblock')]; if(!blocks.length) return;
+  blocks.forEach(b=>b.classList.remove('focus'));
+  const next=blocks.find(b=>!b.querySelector('.cell.chosen'));
+  if(next) next.classList.add('focus');
+}
+function onKey(e){
+  const tag=(e.target&&e.target.tagName)||''; if(tag==='INPUT'||tag==='TEXTAREA') return;
+  const el=stage.firstElementChild, sc=SCREENS[state.idx]; if(!el||!sc) return;
+  if(e.key==='Enter'){ const go=el.querySelector('#goBtn'); if(go&&go.classList.contains('ready')){ e.preventDefault(); go.click(); } return; }
+  if(sc.kind==='items'){
+    const rows=[...el.querySelectorAll('.cells')]; if(!rows.length) return;
+    const row=rows.find(r=>!r.querySelector('.cell.chosen'))||rows[rows.length-1];
+    const n=parseInt(e.key,10); if(!(n>=1)) return;
+    const cells=[...row.querySelectorAll('.cell')]; if(n<=cells.length){ e.preventDefault(); cells[n-1].click(); }
+  } else if(sc.kind==='sjt'){
+    const cards=[...el.querySelectorAll('#opts .card')]; let idx=-1; const k=(e.key||'').toLowerCase();
+    if(k>='a'&&k<='e') idx=k.charCodeAt(0)-97; else { const n=parseInt(e.key,10); if(n>=1) idx=n-1; }
+    if(idx>=0&&idx<cards.length){ e.preventDefault(); cards[idx].click(); }
+  } else if(sc.kind==='belief'){
+    const cards=[...el.querySelectorAll('#b .card')]; const n=parseInt(e.key,10);
+    if(n>=1&&n<=cards.length){ e.preventDefault(); cards[n-1].click(); }
+  }
+}
+function renderSJT(el,sc){
+  el.innerHTML=`<div class="kicker">what would you actually do?</div>
+    <div class="prompt" style="font-size:clamp(17px,2.6vw,21px)">${esc(sc.q)}</div>
+    <div class="col" id="opts">${sc.options.map((o,i)=>`<div class="card" data-i="${i}"><span class="ol">${o.L}</span>${esc(o.t)}</div>`).join('')}</div>
+    <div class="kbhint">tap, or press A to E</div>`;
+  el.querySelectorAll('#opts .card').forEach(c=>c.addEventListener('click',()=>{
+    if(el.dataset.lock)return; el.dataset.lock=1; c.classList.add('chosen');
+    const o=sc.options[+c.dataset.i];
+    state.answers[sc.code]={choice:o.L, text:o.t, weight:o.w, rtMs:Math.round(performance.now()-tStart)};
+    addNode(o.w/5*100); save(); setTimeout(()=>advance(el),320);
+  }));
+}
+function record(m, val){
+  const R=RESP[m.resp||'L5']; const label=R.labels[R.vals.indexOf(val)];
+  state.answers[m.code]={raw:val, label:label, s:m.s, rev:!!m.rev, resp:m.resp||'L5', rtMs:Math.round(performance.now()-tStart)};
+  const disp=m.rev?R.rev(val):val;
+  const span=R.vals[R.vals.length-1]-R.vals[0]; const norm=((disp-R.vals[0])/span)*100;
+  addNode(norm); save();
+}
+
+/* ===========================================================
+   SCORING (researcher-only)
+   =========================================================== */
+function scoreScale(list){
+  const subs={}; let total=0,k=0;
+  for(const it of list){ const a=state.answers[it.code]; if(!a||a.raw==null) continue;
+    const R=RESP[it.resp||'L5']; let v=a.raw; if(it.rev) v=R.rev(v); total+=v; k++; (subs[it.s]=subs[it.s]||[]).push(v); }
+  const sub={}; Object.keys(subs).forEach(s=> sub[s]=subs[s].reduce((a,b)=>a+b,0)); return {total,n:k,sub};
+}
+function computeAll(){
+  const wdm=scoreScale(WDM), ses=scoreScale(SES), dsq=scoreScale(DSQ), saws=scoreScale(SAWS);
+  const sd3=scoreScale(SD3), lts=scoreScale(LTS), rei=scoreScale(REI), erq=scoreScale(ERQ), tcs=scoreScale(TCS);
+  const mc=c=>{ const a=state.answers[c]; return a?a.raw:null; };
+  let SDI=null,band=null;
+  if(['MC_01','MC_02','MC_03','MC_04','MC_05'].every(c=>mc(c)!=null)){
+    SDI=mc('MC_01')+mc('MC_02')+mc('MC_03')+(6-mc('MC_04'))+(6-mc('MC_05'));
+    band=SDI<=13?'High candour (proceed)':SDI<=21?'Moderate (proceed; note)':'High social desirability (flag/exclude)';
+  }
+  const P2=wdm.n?wdm.total:null;
+  let sjtSum=0,sjtN=0; SJT.forEach(s=>{ const a=state.answers[s.code]; if(a){ sjtSum+=a.weight; sjtN++; } });
+  const SJTscore=sjtN?sjtSum:null;
+  let sayDo=null;
+  if(P2!=null && SJTscore!=null){
+    const hi=SJTscore>=24, lo=SJTscore<16;
+    sayDo = P2>=140&&hi?'The Integrated Decider':P2>=140&&lo?'The Theoretical Idealist':P2<85&&hi?'The Intuitive Practitioner':P2<85&&lo?'The Reactive / Myopic Decider':'Mixed / intermediate profile';
+  }
+  const tcsAvg = tcs.n? +(tcs.total/tcs.n).toFixed(2) : null;
+  return {
+    wdm_P2:P2, wdm_markers:wdm.sub,
+    SDI, SDI_band:band,
+    SJT_score:SJTscore, SJT_range:"6 to 30",
+    unified_index:null, unified_index_note:"index formula to be finalised by researcher",
+    sayDo_profile:sayDo,
+    statusBased:ses.sub, dsq_styles:dsq.sub, saws_total:saws.total||null,
+    sd3:sd3.sub, lightTriad:lts.sub, rei:rei.sub, erqS:erq.sub,
+    conformity_average:tcsAvg, conformity_total:tcs.total,
+    answered:Object.keys(state.answers).length
+  };
+}
+
+/* ===========================================================
+   PERSONAL REFLECTION (respondent-facing) — warm, non-clinical,
+   never shows scores or construct names, generated from answers,
+   shown only after submission so it can't bias earlier responses.
+   =========================================================== */
+function generateReflection(){
+  const out=[];
+  const wdm=scoreScale(WDM).sub, rei=scoreScale(REI).sub;
+  const MK={
+    M1:"You catch yourself in the act. Before deciding, you can tell when the pressure is really coming from inside you.",
+    M2:"You think in long arcs, weighing how a choice will look far down the road, not just today.",
+    M3:"You hold steady when things get loud, and you don't let false urgency rush your hand.",
+    M4:"You can let go of a plan once it stops working, without your ego getting in the way.",
+    M5:"You feel the weight of who a decision touches, and you carry more than just your own corner.",
+    M6:"You blend the hard numbers with the human read, and you trust neither one on its own.",
+    M7:"You turn your past decisions into lessons, quietly sharpening your judgement over time."};
+  const keys=Object.keys(wdm);
+  if(keys.length){ keys.sort((a,b)=>wdm[b]-wdm[a]); if(MK[keys[0]]) out.push(MK[keys[0]]); if(keys[1]&&MK[keys[1]]) out.push(MK[keys[1]]); }
+  const rat=rei.Rational||0, exp=rei.Experiential||0;
+  if(rat||exp) out.push(rat>exp+3?"When it counts, you lean analytical, thinking your way toward clarity."
+    : exp>rat+3?"You trust your instincts, reading a situation by feel before the logic catches up."
+    : "You move fluidly between analysis and instinct, drawing on both as the moment asks.");
+  if(!out.length) out.push("You brought real honesty to this, and that candour is itself the mark of a thoughtful decision-maker.");
+  return out.slice(0,3);
+}
+
+/* ===========================================================
+   FINISH → payload → transmit → closing screen
+   =========================================================== */
+function finish(){
+  hint.textContent=''; prog.textContent=''; drawThread();
+  const scores=computeAll();
+  const payload={ studyId:CONFIG.studyId, respondentId:state.id, theme:state.theme,
+    consent:state.consent, startedAt:new Date(state.startedAt||Date.now()).toISOString(), completedAt:new Date().toISOString(),
+    demographics:state.demo, AF_00:{belief_coded:state.belief, belief_text:state.beliefText},
+    responses:state.answers, scores };
+  document.getElementById('endKicker').textContent=theme.kicker;
+  document.getElementById('endTitle').textContent='This is how you tend to decide.';
+  document.getElementById('endLine').textContent='No two people share the same shape. Here is a little of yours.';
+  document.getElementById('trivia').innerHTML=generateReflection().map(t=>`<div class="t"><b>◆</b><span>${t}</span></div>`).join('');
+  const R=CONFIG.researcher, more=R.moreLink?`<div class="sig">Follow where it goes: <a href="${esc(R.moreLink)}">${esc(R.moreLink)}</a></div>`:'';
+  document.getElementById('about').innerHTML=
+    `<h2>Curious what this becomes?</h2>
+     <p>This research is still unfolding, and your answers are part of it now. Thank you.</p>
+     <p>Findings are used only for academic research. Never anything sensitive, never shared without consent.</p>
+     ${more}
+     <div class="sig">${esc(R.signature)}<br>${esc(R.affil)}<br><a href="mailto:${esc(R.email)}">${esc(R.email)}</a></div>`;
+  document.getElementById('payload').textContent=JSON.stringify(payload,null,2);
+  transmit(payload); show('end'); paintArtifact();
+}
+function transmit(payload){
+  try{ const log=JSON.parse(localStorage.getItem('swdmi_results')||'[]'); log.push(payload); localStorage.setItem('swdmi_results',JSON.stringify(log)); }catch(e){}
+  if(!CONFIG.endpoint) return;
+  const body=JSON.stringify(payload);
+  /* Google Apps Script accepts a cross-origin POST only as a "simple" request
+     (no CORS preflight). We therefore send text/plain and never read the reply;
+     the Apps Script still JSON.parses the body server-side. */
+  const blob=new Blob([body],{type:'text/plain;charset=UTF-8'}); let sent=false;
+  try{ if(navigator.sendBeacon) sent=navigator.sendBeacon(CONFIG.endpoint,blob); }catch(e){}
+  if(!sent){ fetch(CONFIG.endpoint,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=UTF-8'},body,keepalive:true})
+    .catch(()=>queueUnsent(payload)); }
+}
+/* If a send fails (e.g. the respondent's connection drops at the very end),
+   the payload is parked here and retried on the next page load / when the
+   browser comes back online. Re-sending is safe: the Apps Script upserts by
+   respondentId, so a retry updates the same row instead of duplicating it. */
+function queueUnsent(payload){
+  try{ const q=JSON.parse(localStorage.getItem('swdmi_unsent')||'[]');
+    const i=q.findIndex(x=>x&&x.respondentId===payload.respondentId);
+    if(i>=0) q[i]=payload; else q.push(payload);
+    localStorage.setItem('swdmi_unsent',JSON.stringify(q)); }catch(e){}
+}
+let flushingUnsent=false;
+async function flushUnsent(){
+  if(!CONFIG.endpoint || flushingUnsent) return;
+  let q; try{ q=JSON.parse(localStorage.getItem('swdmi_unsent')||'[]'); }catch(e){ q=[]; }
+  if(!q.length) return;
+  flushingUnsent=true;
+  const still=[];
+  for(const payload of q){
+    try{ await fetch(CONFIG.endpoint,{method:'POST',mode:'no-cors',keepalive:true,
+          headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify(payload)}); }
+    catch(e){ still.push(payload); }   /* reached the network → drop it; still offline → keep for next time */
+  }
+  try{ localStorage.setItem('swdmi_unsent',JSON.stringify(still)); }catch(e){}
+  flushingUnsent=false;
+}
+
+/* ===========================================================
+   END ARTIFACTS
+   =========================================================== */
+function paintArtifact(){
+  const c=document.getElementById('artifact'), x=c.getContext('2d'), w=c.width, h=c.height;
+  x.clearRect(0,0,w,h); const pts=state.nodes.filter(Boolean).slice(0,90), ac=theme.accent, a2=theme.accent2;
+  if(theme.mode==='heartwood') return paintTree(x,w,h,pts,ac,a2);
+  if(theme.mode==='tide') return paintCurrent(x,w,h,pts,ac,a2);
+  for(let i=1;i<pts.length;i++){ x.beginPath(); x.moveTo(pts[i-1].x*w,pts[i-1].y*h); x.lineTo(pts[i].x*w,pts[i].y*h);
+    x.strokeStyle=ac; x.globalAlpha=.3; x.lineWidth=1; x.stroke(); x.globalAlpha=1; }
+  for(const p of pts){ const r=1.2+p.mag*2.6; const gr=x.createRadialGradient(p.x*w,p.y*h,0,p.x*w,p.y*h,r*3);
+    gr.addColorStop(0,a2); gr.addColorStop(1,'rgba(0,0,0,0)'); x.fillStyle=gr; x.beginPath(); x.arc(p.x*w,p.y*h,r*3,0,7); x.fill();
+    x.fillStyle=ac; x.beginPath(); x.arc(p.x*w,p.y*h,r,0,7); x.fill(); }
+}
+function paintCurrent(x,w,h,pts,ac,a2){
+  const n=Math.max(pts.length,1),m=14,X=i=>m+(w-2*m)*(i/(n-1||1)),Y=i=>{const p=pts[i];return 26+(h-52)*(p?p.val/100:.5);};
+  x.strokeStyle=ac; x.lineWidth=2.2; x.globalAlpha=.85; x.beginPath();
+  for(let i=0;i<n;i++){ const xx=X(i),yy=Y(i); if(i===0)x.moveTo(xx,yy); else{ const px=X(i-1),py=Y(i-1),cx=(px+xx)/2; x.bezierCurveTo(cx,py,cx,yy,xx,yy);} }
+  x.stroke(); x.globalAlpha=1;
+  pts.forEach((p,i)=>{ const xx=X(i),yy=Y(i),r=1.6+p.mag*2.4; const gr=x.createRadialGradient(xx,yy,0,xx,yy,r*3);
+    gr.addColorStop(0,a2); gr.addColorStop(1,'rgba(0,0,0,0)'); x.fillStyle=gr; x.beginPath(); x.arc(xx,yy,r*3,0,7); x.fill();
+    x.fillStyle=ac; x.beginPath(); x.arc(xx,yy,r,0,7); x.fill(); });
+}
+function paintTree(x,w,h,pts,ac,a2){
+  const bx=w/2, by=h-10, topY=18, n=Math.max(pts.length,1);
+  const gr=x.createLinearGradient(0,by,0,topY); gr.addColorStop(0,ac); gr.addColorStop(1,a2);
+  x.strokeStyle=gr; x.lineWidth=3; x.lineCap='round'; x.beginPath(); x.moveTo(bx,by);
+  for(let i=0;i<=n;i++){ const ty=by+(topY-by)*(i/n), tx=bx+Math.sin(i*0.7)*6; x.lineTo(tx,ty);} x.stroke();
+  pts.forEach((p,i)=>{ const f=(i+1)/(n+1), sy=by+(topY-by)*f, sx=bx+Math.sin((i+1)*0.7)*6, side=i%2?1:-1, len=10+(p.val/100)*30, lx=sx+side*len, ly=sy-len*0.5;
+    x.strokeStyle=ac; x.globalAlpha=.55; x.lineWidth=1.2; x.beginPath(); x.moveTo(sx,sy); x.lineTo(lx,ly); x.stroke(); x.globalAlpha=1;
+    const lr=2.2+p.mag*2.6; x.fillStyle=a2; x.beginPath(); x.ellipse(lx,ly,lr*1.6,lr,side>0?-0.6:0.6,0,7); x.fill(); });
+}
+
+/* ===========================================================
+   SOUND — subtle procedural ambience per world (Web Audio).
+   Muted until the user opts in (Begin, or the toggle). To use real
+   clips instead, point an <audio> at your file and play it.
+   =========================================================== */
+const Sound=(function(){
+  let ctx,master,timers=[],src=null,cur=null,muted=true;
+  function ensure(){ if(ctx) return; try{ ctx=new (window.AudioContext||window.webkitAudioContext)(); master=ctx.createGain(); master.gain.value=0; master.connect(ctx.destination); }catch(e){ ctx=null; } }
+  function noise(){ const b=ctx.createBuffer(1,ctx.sampleRate*2,ctx.sampleRate), d=b.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1; return b; }
+  function stop(){ timers.forEach(clearTimeout); timers=[]; if(src){ try{src.stop();}catch(e){} try{src.disconnect();}catch(e){} src=null; } }
+  function wind(){ const s=ctx.createBufferSource(); s.buffer=noise(); s.loop=true; const f=ctx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=420; const g=ctx.createGain(); g.gain.value=.6; s.connect(f); f.connect(g); g.connect(master); s.start(); src=s; }
+  function beep(freq,dur,type,vol){ if(!ctx) return; const o=ctx.createOscillator(), g=ctx.createGain(); o.type=type||'sine'; o.frequency.value=freq; g.gain.value=0; o.connect(g); g.connect(master); const n=ctx.currentTime; g.gain.linearRampToValueAtTime(vol||.2,n+.01); g.gain.exponentialRampToValueAtTime(.0001,n+dur); o.start(n); o.stop(n+dur+.03); }
+  function every(fn,min,max){ const id=setTimeout(function go(){ if(!muted) fn(); const t2=setTimeout(go,min+Math.random()*(max-min)); timers.push(t2); }, min+Math.random()*(max-min)); timers.push(id); }
+  function setTheme(kind){ ensure(); if(!ctx) return; stop(); cur=kind;
+    if(kind==='wind') wind();
+    else if(kind==='jungle'){ wind(); every(()=>{ const f=1400+Math.random()*700; beep(f,.09,'sine',.16); setTimeout(()=>beep(f*1.25,.07,'sine',.13),100); },1200,3600); }
+    else if(kind==='birds') every(()=>{ const f=1800+Math.random()*900; beep(f,.07,'sine',.15); setTimeout(()=>beep(f*1.3,.05,'sine',.12),80); },1400,4200);
+    else if(kind==='ticker') every(()=>beep(760+Math.random()*260,.05,'square',.1),300,1400);
+    else if(kind==='clicks') every(()=>beep(320,.03,'triangle',.18),800,2400);
+    else if(kind==='arcade') every(()=>beep([523,659,784,988][Math.floor(Math.random()*4)],.09,'square',.09),380,1000);
+  }
+  function setMuted(m){ muted=m; ensure(); if(ctx){ try{ctx.resume();}catch(e){} try{ master.gain.linearRampToValueAtTime(m?0:.1, ctx.currentTime+.4); }catch(e){} if(!m&&cur) setTheme(cur); } }
+  return { setTheme, setMuted, isMuted:()=>muted };
+})();
+
+/* ===========================================================
+   OVERLAYS + BOOT
+   =========================================================== */
+function show(id){ ['intro','resume','end','bye'].forEach(k=>document.getElementById(k).classList.toggle('show', k===id)); }
+function hideAll(){ ['intro','resume','end','bye'].forEach(k=>document.getElementById(k).classList.remove('show')); }
+document.querySelectorAll('.theme').forEach(t=>t.addEventListener('click',()=>{
+  document.querySelectorAll('.theme').forEach(x=>x.classList.remove('sel')); t.classList.add('sel');
+  state.theme=t.dataset.th; applyTheme(state.theme); }));
+const sbtn=document.getElementById('sndbtn');
+sbtn.addEventListener('click',()=>{ const m=!Sound.isMuted(); Sound.setMuted(m); sbtn.textContent=m?'Sound off':'Sound on'; });
+document.getElementById('beginBtn').addEventListener('click',()=>{ const th=state.theme; state=fresh(th); buildScreens(); save(); hideAll(); render(); try{ Sound.setMuted(false); sbtn.textContent='Sound on'; }catch(e){} });
+document.getElementById('resumeBtn').addEventListener('click',()=>{ hideAll(); render(); });
+document.getElementById('restartBtn').addEventListener('click',()=>{ state=fresh(state.theme); buildScreens(); save(); hideAll(); render(); });
+document.getElementById('againBtn').addEventListener('click',()=>{ state=fresh(state.theme); buildScreens(); save(); hideAll(); render(); });
+addEventListener('resize',()=>{ resize(); drawThread(); });
+addEventListener('keydown', onKey);
+
+applyTheme('wallstreet'); buildScreens();
+requestAnimationFrame(draw);
+
+/* Retry any responses that couldn't be sent last time (dropped connection, etc.) */
+flushUnsent();
+addEventListener('online', flushUnsent);
+
+const saved=load();
+if(saved && saved.idx>0){
+  state=saved; buildScreens(); applyTheme(state.theme||'wallstreet');
+  document.querySelectorAll('.theme').forEach(x=>x.classList.toggle('sel', x.dataset.th===(state.theme||'wallstreet')));
+  if(saved.idx<SCREENS.length){ document.getElementById('resumeLine').textContent=`About ${Math.round(saved.idx/SCREENS.length*100)}% through. Continue where you left off.`; show('resume'); drawThread(); }
+  else finish();
+}
+</script>
+</body>
+</html>

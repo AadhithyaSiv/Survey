@@ -1,0 +1,16 @@
+# Vercel
+.vercel
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Claude Code local settings
+.claude/settings.local.json
