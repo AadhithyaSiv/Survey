@@ -4,7 +4,7 @@ An interactive research survey (single static page) that collects decision-makin
 data and streams each completed response into a Google Sheet via a Google Apps
 Script Web App.
 
-- **The survey:** [`constellation-experience.html`](constellation-experience.html)
+- **The survey:** [`index.html`](index.html)
 - **The collector:** [`apps-script/Code.gs`](apps-script/Code.gs) (deployed as a Google Apps Script Web App)
 - **Full setup / deployment steps:** [`DEPLOY.md`](DEPLOY.md)
 

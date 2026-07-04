@@ -29,7 +29,7 @@ Do the **Google side first** (you need its URL), then the **Vercel side**.
 
 ## Part 2 — Point the survey at your collector
 
-Open [`constellation-experience.html`](constellation-experience.html), find near
+Open [`index.html`](index.html), find near
 the top of the `<script>`:
 
 ```js
@@ -48,8 +48,8 @@ Save the file.
 ## Part 3 — Deploy to Vercel
 
 **Option A — GitHub (recommended, gives auto-deploys on every edit):**
-1. Put this folder in a GitHub repo (commit `constellation-experience.html`,
-   `vercel.json`, and the `apps-script/` folder).
+1. Put this folder in a GitHub repo (commit `index.html` and the
+   `apps-script/` folder).
 2. At <https://vercel.com> ▸ **Add New ▸ Project ▸ Import** the repo.
 3. Framework preset: **Other**. Leave build/output settings empty. **Deploy**.
 
@@ -61,7 +61,8 @@ vercel        # first run links/creates the project
 vercel --prod # promote to your live URL
 ```
 
-`vercel.json` makes the survey open at the site root (`your-app.vercel.app/`).
+Because the file is named `index.html`, Vercel serves it at the site root
+(`your-app.vercel.app/`) automatically — no extra configuration needed.
 
 ## Part 4 — Test end to end
 
