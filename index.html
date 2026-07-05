@@ -41,6 +41,11 @@
   .kicker{font-size:12.5px; letter-spacing:.22em; text-transform:uppercase; color:var(--accent); margin-bottom:18px; font-weight:800;}
   .prompt{font-family:'Newsreader',Georgia,serif; font-size:clamp(25px,4.6vw,38px); line-height:1.32; font-weight:500; letter-spacing:-.005em;}
   .sub{font-size:16px; color:var(--ink-dim); margin-top:14px; line-height:1.6; font-weight:600;}
+  /* consent screen only: larger type that fills more of the screen */
+  .moment.consent{max-width:760px;}
+  .moment.consent .prompt{font-size:clamp(31px,5.8vw,48px); line-height:1.24;}
+  .moment.consent .sub{font-size:clamp(17px,2.4vw,21px); line-height:1.6; margin-top:22px;}
+  .moment.consent .checkrow span{font-size:16px; line-height:1.55;}
 
   .cells{display:flex; gap:10px; margin:34px auto 0; justify-content:center; max-width:600px; flex-wrap:wrap;}
   .cells.num{gap:8px;}
@@ -694,6 +699,7 @@ function addNode(val){ const i=state.nodes.length, ang=i*2.39996, rad=0.30+(i/Ma
   state.nodes.push({x:0.5+Math.cos(ang)*rad*0.74, y:0.5+Math.sin(ang)*rad*0.56, val:(val==null?55:val), mag:(val==null?.85:.55+val/200)}); }
 
 function renderConsent(el){
+  el.classList.add('consent');
   el.innerHTML=`<div class="kicker">before we begin</div>
     <div class="prompt">Do you consent to take part?</div>
     <p class="sub">This is doctoral research into how people really make decisions. Whatever you share stays strictly confidential, is used only for academic study, and is never used anywhere without your say-so. No sensitive results, no judgement, just honest curiosity about the way you think.</p>
