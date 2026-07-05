@@ -43,6 +43,7 @@
   .sub{font-size:16px; color:var(--ink-dim); margin-top:14px; line-height:1.6; font-weight:600;}
   /* consent screen only: larger type that fills more of the screen */
   .moment.consent{max-width:760px;}
+  .moment.consent .kicker{font-size:23px; letter-spacing:.24em; margin-top:-3vh; margin-bottom:15vh;}
   .moment.consent .prompt{font-size:clamp(31px,5.8vw,48px); line-height:1.24;}
   .moment.consent .sub{font-size:clamp(17px,2.4vw,21px); line-height:1.6; margin-top:22px;}
   .moment.consent .checkrow span{font-size:16px; line-height:1.55;}
@@ -54,6 +55,8 @@
     font-size:14px; font-weight:700; line-height:1.24; box-shadow:0 5px 14px rgba(90,60,150,.08);
     transition:transform .14s cubic-bezier(.2,.9,.3,1.4), border-color .18s, background .18s, color .18s;}
   .cells.num .cell{flex:0 0 auto; width:54px; min-width:0; min-height:60px; font-size:18px; border-radius:15px;}
+  .cells.compact{flex-wrap:nowrap; gap:5px;}
+  .cells.compact .cell{flex:1 1 0; min-width:0; min-height:64px; padding:8px 4px; font-size:clamp(9.5px,2.3vw,13px); line-height:1.18; border-radius:12px;}
   .cell:hover{border-color:var(--accent); transform:translateY(-4px);}
   .cell:active{transform:scale(.93);}
   .cell.chosen{background:var(--accent); color:#fff; border-color:var(--accent); transform:scale(1.09);}
@@ -495,20 +498,20 @@ const SECTIONS = [
   {id:"belief"},
   {id:"demo"},
   {id:"breather"},
-  {id:"scale", scale:SD3, pace:5},
-  {id:"scale", scale:LTS, pace:5},
-  {id:"scale", scale:REI, pace:5},
-  {id:"scale", scale:ERQ, pace:3},
-  {id:"scale", scale:TCS, pace:3},
-  {id:"scale", scale:SES, pace:5},
+  {id:"scale", scale:SD3},
+  {id:"scale", scale:LTS},
+  {id:"scale", scale:REI},
+  {id:"scale", scale:ERQ},
+  {id:"scale", scale:TCS},
+  {id:"scale", scale:SES},
   {id:"reveal", k:"a pattern is forming", q:"Something about you is already taking shape.", sub:"Most people never see this in themselves. Keep going."},
-  {id:"scale", scale:SAWS, pace:3},
-  {id:"scale", scale:MCSDS, pace:5},
+  {id:"scale", scale:SAWS},
+  {id:"scale", scale:MCSDS},
   {id:"reveal", k:"the heart of it", q:"This is where the real portrait forms.", sub:"You're closer to the picture than you think."},
-  {id:"scale", scale:WDM, pace:5},
+  {id:"scale", scale:WDM},
   {id:"reveal", k:"the moment of truth", q:"Now, a few real situations.", sub:"Not what you should do. What you would."},
   {id:"sjt"},
-  {id:"scale", scale:DSQ, pace:5},
+  {id:"scale", scale:DSQ},
 ];
 
 /* ===========================================================
@@ -573,7 +576,7 @@ function buildScreens(){
     else if(sec.id==="sjt") SJT.forEach(sc=>SCREENS.push({kind:"sjt",sc}));
     else if(sec.id==="scale"){
       const list=sec.scale, key=list[0].code.split('_')[0], ord=seededOrder(key,list.length);
-      const items=ord.map(i=>list[i]); const n=sec.pace||5; let buf=[];
+      const items=ord.map(i=>list[i]); const n=3; let buf=[];   // cap: at most 3 questions on screen at once
       const flush=()=>{ if(buf.length){ SCREENS.push({kind:"items",items:buf}); buf=[]; } };
       for(const it of items){ if(it.rev){ flush(); SCREENS.push({kind:"items",items:[it]}); }  // reverse item = its own screen
         else { buf.push(it); if(buf.length>=n) flush(); } }                                       // others grouped into a round
@@ -594,14 +597,14 @@ const scn=document.getElementById('scene'), gx=scn.getContext('2d');
 let dpr=Math.min(devicePixelRatio||1,2), W=1, H=1;
 const rnd=m=>Math.random()*m;
 let P={snow:[],rise:[],rain:[],birds:[],pieces:[],tk:[]};
+const JIGSAW_COLS=['#ff7a59','#4a6ff0','#2bb673','#e8b84b','#b18bff'];
 function dims(){ return {w:app.clientWidth||innerWidth, h:app.clientHeight||innerHeight}; }
 function initScene(){
   P.snow=[]; for(let i=0;i<Math.min(150, W*H/9000); i++) P.snow.push({x:rnd(W),y:rnd(H),r:(rnd(1.6)+.5)*dpr,s:rnd(.5)+.2,d:rnd(1)-.5});
   P.rise=[]; for(let i=0;i<40;i++) P.rise.push({x:rnd(W),y:rnd(H),r:(rnd(1.8)+.7)*dpr,s:rnd(.4)+.1,ph:rnd(6.28)});
   P.rain=[]; for(let i=0;i<70;i++) P.rain.push({x:rnd(W),y:rnd(H),l:(rnd(12)+8)*dpr,s:rnd(5)+7});
   P.birds=[]; for(let i=0;i<6;i++) P.birds.push({x:rnd(W),y:rnd(H*.4)+H*.08,s:(rnd(.3)+.15)*dpr,ph:rnd(6.28)});
-  const cols=['#ff7a59','#4a6ff0','#2bb673','#e8b84b','#b18bff'];
-  P.pieces=[]; for(let i=0;i<8;i++) P.pieces.push({x:rnd(W),y:rnd(H),s:(rnd(28)+38)*dpr,rot:rnd(6.28),vr:(rnd(1)-.5)*.003,vx:(rnd(1)-.5)*.3*dpr,vy:(rnd(1)-.5)*.3*dpr,c:cols[i%cols.length]});
+  P.pieces=[]; for(let i=0;i<8;i++) P.pieces.push({x:rnd(W),y:rnd(H),s:(rnd(28)+38)*dpr,rot:rnd(6.28),vr:(rnd(1)-.5)*.003,vx:(rnd(1)-.5)*.3*dpr,vy:(rnd(1)-.5)*.3*dpr,c:JIGSAW_COLS[i%JIGSAW_COLS.length]});
   const syms=['AAPL','TSLA','NIFTY','BTC','INFY','AMZN','GOOG','SPX','ORCL','GLD'];
   P.tk=syms.map(s=>({s,up:Math.random()<.5,v:(rnd(4)+.1).toFixed(2)}));
 }
@@ -642,9 +645,9 @@ function sAraku(t){ bgFill('#eef6ec','#dfeede');
 }
 function sJigsaw(t){ bgFill('#fbf7f0','#eef0fb');
   for(const p of P.pieces){ p.x+=p.vx; p.y+=p.vy; p.rot+=p.vr; const s=p.s; if(p.x<-s)p.x=W+s; if(p.x>W+s)p.x=-s; if(p.y<-s)p.y=H+s; if(p.y>H+s)p.y=-s;
-    gx.save(); gx.translate(p.x,p.y); gx.rotate(p.rot); gx.globalAlpha=.2; gx.fillStyle=p.c; piece(s); gx.globalAlpha=1; gx.restore(); }
+    gx.save(); gx.translate(p.x,p.y); gx.rotate(p.rot); gx.globalAlpha=.2; gx.fillStyle=p.c; piece(gx,s); gx.globalAlpha=1; gx.restore(); }
 }
-function piece(s){ const k=s*0.2, h=s/2; gx.beginPath(); gx.moveTo(-h,-h); gx.lineTo(-k,-h); gx.arc(0,-h,k,Math.PI,0,true); gx.lineTo(h,-h); gx.lineTo(h,-k); gx.arc(h,0,k,-Math.PI/2,Math.PI/2,false); gx.lineTo(h,h); gx.lineTo(-h,h); gx.closePath(); gx.fill(); }
+function piece(ctx,s){ const k=s*0.2, h=s/2; ctx.beginPath(); ctx.moveTo(-h,-h); ctx.lineTo(-k,-h); ctx.arc(0,-h,k,Math.PI,0,true); ctx.lineTo(h,-h); ctx.lineTo(h,-k); ctx.arc(h,0,k,-Math.PI/2,Math.PI/2,false); ctx.lineTo(h,h); ctx.lineTo(-h,h); ctx.closePath(); ctx.fill(); }
 function sGame(t){ bgFill('#120826','#1b0b30');
   const cx=W/2, cy=H*0.4, r=W*0.1; const sg=gx.createLinearGradient(0,cy-r,0,cy+r); sg.addColorStop(0,'#ff3ea5'); sg.addColorStop(1,'#ffb03a'); gx.fillStyle=sg; gx.beginPath(); gx.arc(cx,cy,r,Math.PI,0); gx.closePath(); gx.fill();
   gx.fillStyle='#120826'; for(let i=1;i<=5;i++) gx.fillRect(cx-r,cy-r+ i*r*0.17, r*2, Math.max(1.5,r*0.055));
@@ -654,19 +657,106 @@ function sGame(t){ bgFill('#120826','#1b0b30');
 }
 
 /* ===========================================================
-   THREAD
+   THREAD — theme-personalised progress track. Each world gets its
+   own motif; only the portion already answered is ever drawn (no
+   preview of what's ahead). Placement uses a stable per-index
+   pseudo-random jitter (jrand) so it looks organic/scattered like
+   the original constellation, but never reshuffles on redraw.
    =========================================================== */
 const thread=document.getElementById('thread'), tc=thread.getContext('2d');
 function sizeThread(){ const w=dims().w; thread.width=Math.max(1,w*dpr); thread.height=70*dpr; thread.style.width=w+'px'; thread.style.height='70px'; }
 function rgb(hex){ const n=parseInt(hex.slice(1),16); return [n>>16&255,n>>8&255,n&255].join(','); }
+function jrand(i,salt){ const v=Math.sin(i*12.9898+(salt||0)*37.719)*43758.5453; return v-Math.floor(v); }
+
 function drawThread(){
-  const n=SCREENS.length||1, done=state.idx, ac=rgb(theme.accent), a2=rgb(theme.accent2);
+  const n=SCREENS.length||1, done=state.idx;
   tc.clearRect(0,0,thread.width,thread.height);
-  const pad=42*dpr, w=thread.width-pad*2, y=40*dpr; let prev=null; const step=Math.max(1,Math.round(n/26));
-  for(let i=0;i<n;i+=step){ const x=pad+w*(i/(n-1)), yy=y+Math.sin(i*0.9)*9*dpr, lit=i<done;
+  const pad=42*dpr, w=thread.width-pad*2, y0=40*dpr, step=Math.max(1,Math.round(n/26));
+  const pts=[]; for(let i=0;i<n;i+=step) pts.push(i);
+  const T={ n, done, pad, w, y0, ac:rgb(theme.accent), a2:rgb(theme.accent2), pts, x:i=>pad+w*(i/(n-1)) };
+  switch(theme.scene){
+    case 'wall':    threadTicker(T); break;
+    case 'alaska':  threadBoat(T); break;
+    case 'amazon':  threadVine(T); break;
+    case 'jigsaw':  threadPuzzle(T); break;
+    case 'game':    threadCheckpoints(T); break;
+    default:        threadStars(T);            // araku: the original constellation
+  }
+}
+/* araku + fallback: the original scattered constellation */
+function threadStars(T){
+  const {pts,done,y0,ac,a2}=T; let prev=null;
+  for(const i of pts){ const x=T.x(i), yy=y0+Math.sin(i*0.9)*9*dpr, lit=i<done;
     if(prev&&lit){ tc.beginPath(); tc.moveTo(prev.x,prev.y); tc.lineTo(x,yy); tc.strokeStyle=`rgba(${ac},.6)`; tc.lineWidth=dpr; tc.stroke(); }
     if(lit) prev={x,y:yy};
     tc.beginPath(); tc.arc(x,yy,(lit?3.2:1.5)*dpr,0,7); tc.fillStyle=lit?`rgba(${a2},.95)`:`rgba(${ac},.22)`; tc.fill(); }
+}
+/* Wall Street: a little ticker chart, green on the way up, red on the way down */
+function threadTicker(T){
+  const {pts,done,y0,ac,a2}=T; let prev=null;
+  for(const i of pts){ if(i>=done) break; const x=T.x(i), yy=y0+(jrand(i,1)-0.5)*24*dpr;
+    if(prev){ const up=yy<prev.y;
+      tc.strokeStyle=up?'rgba(23,192,123,.85)':'rgba(232,103,90,.85)'; tc.lineWidth=1.8*dpr;
+      tc.beginPath(); tc.moveTo(prev.x,prev.y); tc.lineTo(x,yy); tc.stroke(); }
+    tc.beginPath(); tc.arc(x,yy,2.8*dpr,0,7); tc.fillStyle=`rgba(${a2},.95)`; tc.fill();
+    prev={x,y:yy}; }
+}
+/* Alaska: a little boat cutting through the ice, broken floes trailing behind it */
+function threadBoat(T){
+  const {pts,done,n,y0,ac,a2}=T, tipX=T.x(Math.min(done,n-1));
+  tc.strokeStyle=`rgba(${ac},.3)`; tc.lineWidth=dpr; tc.beginPath(); tc.moveTo(T.x(0),y0); tc.lineTo(tipX,y0); tc.stroke();
+  for(const i of pts){ if(i>=done) break; const x=T.x(i), yy=y0+(jrand(i,2)-0.5)*16*dpr, r=(4+jrand(i,4)*3)*dpr;
+    tc.fillStyle='rgba(255,255,255,.95)'; tc.strokeStyle=`rgba(${ac},.55)`; tc.lineWidth=dpr*0.8;
+    tc.beginPath(); tc.ellipse(x-r*0.8,yy+r*0.25,r*0.55,r*0.4,0.3,0,7); tc.fill(); tc.stroke();
+    tc.beginPath(); tc.ellipse(x+r*0.8,yy-r*0.2,r*0.55,r*0.4,-0.3,0,7); tc.fill(); tc.stroke(); }
+  tc.fillStyle=`rgba(${a2},1)`; tc.beginPath();
+  tc.moveTo(tipX-9*dpr,y0+2*dpr); tc.lineTo(tipX+9*dpr,y0+2*dpr); tc.lineTo(tipX+5*dpr,y0+9*dpr); tc.lineTo(tipX-5*dpr,y0+9*dpr); tc.closePath(); tc.fill();
+  tc.strokeStyle=`rgba(${a2},1)`; tc.lineWidth=1.4*dpr; tc.beginPath(); tc.moveTo(tipX,y0+2*dpr); tc.lineTo(tipX,y0-13*dpr); tc.stroke();
+  tc.fillStyle=`rgba(${a2},.9)`; tc.beginPath(); tc.moveTo(tipX,y0-13*dpr); tc.lineTo(tipX+8*dpr,y0-6*dpr); tc.lineTo(tipX,y0-5*dpr); tc.closePath(); tc.fill();
+}
+/* Amazon: a monkey swinging along the vine — a new section (leaf) grows in per question */
+function threadVine(T){
+  const {done,n,y0,ac,a2}=T, x0=T.x(0), tipX=T.x(Math.min(done,n-1));
+  const vy=x=>y0+Math.sin((x-x0)/Math.max(1,tipX-x0)*14)*10*dpr;
+  tc.lineWidth=2*dpr; tc.strokeStyle=`rgba(${ac},.7)`; tc.beginPath();
+  for(let x=x0;x<=tipX;x+=6*dpr){ const yy=vy(x); x===x0?tc.moveTo(x,yy):tc.lineTo(x,yy); } tc.stroke();
+  for(let i=0;i<done;i++){ const x=T.x(i); if(x>tipX) break; const yy=vy(x), ang=jrand(i,6)*6.28;
+    tc.save(); tc.translate(x,yy); tc.rotate(ang); tc.fillStyle=`rgba(${a2},.85)`;
+    tc.beginPath(); tc.ellipse(0,0,5*dpr,2.6*dpr,0,0,7); tc.fill(); tc.restore(); }
+  tc.fillStyle=`rgba(${a2},1)`;
+  tc.beginPath(); tc.arc(tipX,y0-2*dpr,6*dpr,0,7); tc.fill();
+  tc.beginPath(); tc.arc(tipX-5*dpr,y0-6*dpr,2.2*dpr,0,7); tc.fill();
+  tc.beginPath(); tc.arc(tipX+5*dpr,y0-6*dpr,2.2*dpr,0,7); tc.fill();
+  tc.strokeStyle=`rgba(${a2},1)`; tc.lineWidth=1.6*dpr; tc.beginPath(); tc.moveTo(tipX,y0-8*dpr); tc.lineTo(tipX,y0-14*dpr); tc.stroke();
+}
+/* Jigsaw: interlocking pieces assembling left to right, each a randomised width */
+function threadPuzzle(T){
+  const {pts,done,w,pad,y0,ac}=T, m=pts.length; if(!m) return;
+  let total=0; const wts=pts.map(i=>{ const wt=0.65+jrand(i,11); total+=wt; return wt; });
+  const hh=10*dpr, k=hh*0.42; let x=pad;
+  for(let idx=0; idx<m; idx++){ const i=pts[idx], pw=w*(wts[idx]/total);
+    if(i<done){
+      tc.fillStyle=`rgba(${rgb(JIGSAW_COLS[idx%JIGSAW_COLS.length])},.92)`; tc.strokeStyle=`rgba(${ac},.4)`; tc.lineWidth=dpr*0.8;
+      tc.beginPath();
+      tc.moveTo(x,y0-hh); tc.lineTo(x+pw,y0-hh);
+      tc.lineTo(x+pw,y0-k); tc.arc(x+pw,y0,k,-Math.PI/2,Math.PI/2,false);
+      tc.lineTo(x+pw,y0+hh); tc.lineTo(x,y0+hh);
+      if(idx>0){ tc.lineTo(x,y0+k); tc.arc(x,y0,k,Math.PI/2,-Math.PI/2,true); }
+      tc.closePath(); tc.fill(); tc.stroke();
+    }
+    x+=pw; }
+}
+/* Game World: checkpoints reached so far, linked by a short connecting strip */
+function threadCheckpoints(T){
+  const {pts,done,y0,ac,a2}=T; let prev=null;
+  for(const i of pts){ if(i>=done) break; const x=T.x(i), yy=y0+(jrand(i,9)-0.5)*18*dpr, h=15*dpr;
+    if(prev){ tc.strokeStyle=`rgba(${a2},.5)`; tc.lineWidth=1.6*dpr; tc.beginPath(); tc.moveTo(prev.x,prev.y); tc.lineTo(x,yy); tc.stroke(); }
+    tc.strokeStyle=`rgba(${a2},.9)`; tc.lineWidth=1.4*dpr;
+    tc.beginPath(); tc.moveTo(x,yy+h*0.5); tc.lineTo(x,yy-h*0.5); tc.stroke();
+    tc.beginPath(); tc.moveTo(x,yy-h*0.5); tc.lineTo(x+h*0.6,yy-h*0.26); tc.lineTo(x,yy-h*0.02); tc.closePath();
+    tc.fillStyle=`rgba(${a2},.95)`; tc.fill();
+    tc.beginPath(); tc.arc(x,yy+h*0.5,2.6*dpr,0,7); tc.fillStyle=`rgba(${ac},.5)`; tc.fill();
+    prev={x,y:yy}; }
 }
 
 /* ===========================================================
@@ -731,8 +821,8 @@ function renderBreather(el){
 function renderBelief(el){
   el.innerHTML=`<div class="kicker">to begin</div><div class="prompt">Some people are born better decision-makers than others.</div>
     <div class="sub">Do you believe this?</div>
-    <div id="b" style="display:flex; flex-direction:column; gap:10px; max-width:440px; margin:26px auto 0">
-      ${["Yes, I believe so","Unsure","No, I do not believe so"].map((x,i)=>`<div class="card" data-i="${i}" style="min-height:0; padding:16px 20px">${x}</div>`).join('')}
+    <div class="cards" id="b">
+      ${["Yes, I believe so","Unsure","No, I do not believe so"].map((x,i)=>`<div class="card" data-i="${i}">${x}</div>`).join('')}
     </div>
     <div class="kbhint">tap, or press 1, 2 or 3</div>
     <textarea id="bt" rows="3" placeholder="Share your thinking, if you like (optional)"></textarea>
@@ -773,24 +863,25 @@ function renderDemo(el,part){
   go.addEventListener('click',()=>{ if(!go.classList.contains('ready')) return; if(part===2) addNode(null); advance(el); });
 }
 function renderItems(el,items){
-  const solo=items.length===1, R=respOf(items[0]), cls=R.num?'cells num':'cells';
+  const solo=items.length===1, R=respOf(items[0]);
+  const cls='cells'+(R.num?' num':'')+(!R.num&&R.labels.length>=7?' compact':'');
   const anch=R.anchorL?`<div class="anchz"><span>${esc(R.anchorL)}</span><span>${esc(R.anchorR)}</span></div>`:'';
   const row=(qi)=>`<div class="${cls}" data-c="${qi}">${R.labels.map((x,i)=>`<div class="cell" data-i="${i}">${esc(x)}</div>`).join('')}</div>${anch}`;
   let html;
   if(solo){ html=`<div class="prompt">${esc(items[0].q)}</div>${row(0)}<div class="kbhint">tap, or press a number key</div>`; }
-  else{ html=`<p class="rhint">Read each and tap how true it feels. You can also use the number keys, then Enter.</p>`
-    +items.map((m,qi)=>`<div class="qblock"><div class="qtext">${esc(m.q)}</div>${row(qi)}</div>`).join('')
-    +`<button class="go" id="goBtn" style="margin-top:28px">Continue <span aria-hidden="true">→</span></button>`; }
+  else{ html=`<p class="rhint">Read each and tap how true it feels. You can also use the number keys.</p>`
+    +items.map((m,qi)=>`<div class="qblock"><div class="qtext">${esc(m.q)}</div>${row(qi)}</div>`).join(''); }
   el.innerHTML=html;
   const chosen={};
   const commit=()=>items.forEach((m,qi)=>{ if(chosen[qi]!=null) record(m, R.vals[chosen[qi]]); });
   el.querySelectorAll('.cells').forEach(rw=>{ const qi=+rw.dataset.c;
     rw.querySelectorAll('.cell').forEach(c=>c.addEventListener('click',()=>{
+      if(el.dataset.lock)return;
       rw.querySelectorAll('.cell').forEach(x=>x.classList.remove('chosen')); c.classList.add('chosen'); chosen[qi]=+c.dataset.i;
-      if(solo){ if(el.dataset.lock)return; el.dataset.lock=1; commit(); setTimeout(()=>advance(el),300); }
-      else{ highlightFocus(el); if(Object.keys(chosen).length>=items.length) el.querySelector('#goBtn').classList.add('ready'); }
+      if(!solo) highlightFocus(el);
+      if(Object.keys(chosen).length>=items.length){ el.dataset.lock=1; commit(); setTimeout(()=>advance(el),solo?300:380); }
     })); });
-  if(!solo){ highlightFocus(el); el.querySelector('#goBtn').addEventListener('click',()=>{ if(Object.keys(chosen).length<items.length) return; commit(); advance(el); }); }
+  if(!solo) highlightFocus(el);
 }
 function highlightFocus(el){
   const blocks=[...el.querySelectorAll('.qblock')]; if(!blocks.length) return;
@@ -1031,8 +1122,41 @@ function hideAll(){ ['intro','resume','end','bye'].forEach(k=>document.getElemen
 document.querySelectorAll('.theme').forEach(t=>t.addEventListener('click',()=>{
   document.querySelectorAll('.theme').forEach(x=>x.classList.remove('sel')); t.classList.add('sel');
   state.theme=t.dataset.th; applyTheme(state.theme); }));
+/* ---- hidden admin: tap the sound toggle 4× quickly to jump to any screen ---- */
+function screenLabel(sc){
+  switch(sc.kind){
+    case 'consent':  return 'Consent';
+    case 'belief':   return 'Belief question';
+    case 'demo':     return 'Demographics '+sc.part;
+    case 'breather': return 'Breather';
+    case 'reveal':   return 'Reveal — '+String(sc.q||'').slice(0,42);
+    case 'items':    { const codes=sc.items.map(it=>it.code); return codes[0].split('_')[0]+' · '+codes.join(', '); }
+    case 'sjt':      return 'SJT — '+(sc.sc.title||sc.sc.code);
+    default:         return sc.kind;
+  }
+}
+function openAdminPanel(){
+  const ex=document.getElementById('admin'); if(ex) ex.remove();
+  const ov=document.createElement('div'); ov.id='admin';
+  ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(10,12,20,.92);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);display:flex;flex-direction:column;padding:16px;font-family:Inter,sans-serif;';
+  const rows=SCREENS.map((sc,i)=>`<button data-i="${i}" style="text-align:left;display:block;width:100%;margin:0 0 6px;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.18);background:${i===state.idx?'rgba(74,111,240,.55)':'rgba(255,255,255,.06)'};color:#fff;font:600 13px/1.35 Inter,sans-serif;cursor:pointer;">${i}. ${esc(screenLabel(sc))}</button>`).join('');
+  ov.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;color:#fff;">
+      <div style="font-weight:800;font-size:15px;">Admin · jump to screen <span style="opacity:.6;font-weight:600;">(${SCREENS.length} total)</span></div>
+      <button id="adminClose" style="padding:8px 15px;border-radius:8px;border:none;background:#4a6ff0;color:#fff;font:700 13px Inter,sans-serif;cursor:pointer;">Close</button>
+    </div>
+    <div style="overflow:auto;flex:1;-webkit-overflow-scrolling:touch;">${rows}</div>`;
+  document.body.appendChild(ov);
+  ov.querySelector('#adminClose').addEventListener('click',()=>ov.remove());
+  ov.querySelectorAll('button[data-i]').forEach(b=>b.addEventListener('click',()=>{
+    state.idx=+b.dataset.i; save(); ov.remove(); hideAll(); render(); }));
+}
 const sbtn=document.getElementById('sndbtn');
-sbtn.addEventListener('click',()=>{ const m=!Sound.isMuted(); Sound.setMuted(m); sbtn.textContent=m?'Sound off':'Sound on'; });
+let sndTaps=0, sndTapT=0;
+sbtn.addEventListener('click',()=>{
+  const m=!Sound.isMuted(); Sound.setMuted(m); sbtn.textContent=m?'Sound off':'Sound on';
+  const now=Date.now(); sndTaps=(now-sndTapT<1500)?sndTaps+1:1; sndTapT=now;
+  if(sndTaps>=4){ sndTaps=0; openAdminPanel(); }
+});
 document.getElementById('beginBtn').addEventListener('click',()=>{ const th=state.theme; state=fresh(th); buildScreens(); save(); hideAll(); render(); try{ Sound.setMuted(false); sbtn.textContent='Sound on'; }catch(e){} });
 document.getElementById('resumeBtn').addEventListener('click',()=>{ hideAll(); render(); });
 document.getElementById('restartBtn').addEventListener('click',()=>{ state=fresh(state.theme); buildScreens(); save(); hideAll(); render(); });
