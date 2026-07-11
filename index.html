@@ -69,6 +69,28 @@
   .qblock .cells{margin-top:16px;}
   .qblock.focus{background:rgba(120,120,170,.06); border-radius:14px; padding-left:12px; padding-right:12px;}
   .kbhint{font-size:12px; color:var(--ink-dim); opacity:.7; margin-top:16px; font-weight:600; letter-spacing:.02em;}
+  /* decision-maker profile + expanded end screen */
+  .bigletter{font-family:'Newsreader',Georgia,serif; font-size:clamp(60px,15vw,116px); font-weight:500; color:var(--accent); line-height:1; margin:4px 0 12px;}
+  .code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.25em; font-size:15px; color:var(--ink-dim); font-weight:700; margin-top:16px;}
+  .codebadge{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.22em; font-size:20px; font-weight:800; color:var(--accent);}
+  .quote{max-width:520px; margin:20px auto 0; text-align:left; background:var(--paper); border:1px solid var(--line); border-radius:16px; padding:16px 18px;}
+  .quote .lab{font-size:12px; color:var(--ink-dim); font-weight:700;}
+  .quote .q{font-family:'Newsreader',Georgia,serif; font-size:19px; line-height:1.5; margin-top:6px;}
+  .quote .n{font-size:13px; color:var(--ink-dim); margin-top:8px; line-height:1.55;}
+  .stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; margin:14px auto 0; max-width:520px;}
+  .stat{background:var(--paper); border:1px solid var(--line); border-radius:14px; padding:12px 14px; text-align:left;}
+  .stat .k{font-size:12px; color:var(--ink-dim); font-weight:700;}
+  .stat .v{font-size:22px; font-weight:800; margin-top:3px;}
+  .contrib{max-width:520px; margin:14px auto 0; background:rgba(130,130,180,.09); border-radius:14px; padding:14px 16px;
+    font-size:14px; line-height:1.6; text-align:left; font-weight:600; color:var(--ink);}
+  .keep{max-width:520px; margin:16px auto 0; text-align:left;}
+  .keep .row{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; align-items:center;}
+  .keep input[type=email]{flex:1 1 210px; background:var(--paper); border:2px solid var(--line); border-radius:12px;
+    padding:11px 13px; color:var(--ink); font-family:inherit; font-size:14px; outline:none; font-weight:600;}
+  .keep input[type=email]:focus{border-color:var(--accent);}
+  .btn2{cursor:pointer; background:transparent; border:2px solid var(--accent); color:var(--accent); font-weight:800;
+    border-radius:40px; padding:11px 20px; font-size:14px; font-family:inherit; transition:.15s;}
+  .btn2:hover{background:var(--accent); color:#fff;}
 
   .cards{display:flex; gap:14px; margin-top:32px; justify-content:center; flex-wrap:wrap;}
   .card{flex:1 1 210px; max-width:340px; min-height:68px; border-radius:20px; cursor:pointer;
@@ -504,13 +526,16 @@ const SECTIONS = [
   {id:"scale", scale:ERQ},
   {id:"scale", scale:TCS},
   {id:"scale", scale:SES},
-  {id:"reveal", k:"a pattern is forming", q:"Something about you is already taking shape.", sub:"Most people never see this in themselves. Keep going."},
+  {id:"letter", axis:1},
   {id:"scale", scale:SAWS},
+  {id:"letter", axis:2},
   {id:"scale", scale:MCSDS},
   {id:"reveal", k:"the heart of it", q:"This is where the real portrait forms.", sub:"You're closer to the picture than you think."},
   {id:"scale", scale:WDM},
+  {id:"letter", axis:3},
   {id:"reveal", k:"the moment of truth", q:"Now, a few real situations.", sub:"Not what you should do. What you would."},
   {id:"sjt"},
+  {id:"letter", axis:4},
   {id:"scale", scale:DSQ},
 ];
 
@@ -564,6 +589,16 @@ function seededOrder(key, n){
 /* ===========================================================
    BUILD SCREENS
    =========================================================== */
+/* Friendly name per scale, keyed by the array itself. Used by the admin menu
+   so a screen that mixes sub-scale codes (e.g. shuffled MACH/NARC/PSY) still
+   reads as its true instrument (SD3) rather than just its first item's prefix. */
+const SCALE_NAMES = new Map([
+  [SD3,'SD3 · Dark Triad'], [LTS,'LTS · Light Triad'], [REI,'REI · Rational–Experiential'],
+  [ERQ,'ERQ-S · Emotion Regulation'], [TCS,'TCS · Social Conformity'], [SES,'SES · Epistemic Superiority'],
+  [SAWS,'SAWS · Wisdom'], [MCSDS,'MCSDS · Social Desirability'], [WDM,'WDM · Wise Decision-Making'],
+  [DSQ,'DSQ · Decision Styles'],
+]);
+
 let SCREENS=[];
 function buildScreens(){
   SCREENS=[];
@@ -572,13 +607,15 @@ function buildScreens(){
     else if(sec.id==="belief") SCREENS.push({kind:"belief"});
     else if(sec.id==="demo"){ SCREENS.push({kind:"demo",part:1}); SCREENS.push({kind:"demo",part:2}); }
     else if(sec.id==="reveal") SCREENS.push({kind:"reveal",k:sec.k,q:sec.q,sub:sec.sub});
+    else if(sec.id==="letter") SCREENS.push({kind:"letter",axis:sec.axis});
     else if(sec.id==="breather") SCREENS.push({kind:"breather"});
     else if(sec.id==="sjt") SJT.forEach(sc=>SCREENS.push({kind:"sjt",sc}));
     else if(sec.id==="scale"){
       const list=sec.scale, key=list[0].code.split('_')[0], ord=seededOrder(key,list.length);
+      const name=SCALE_NAMES.get(list)||key;
       const items=ord.map(i=>list[i]); const n=3; let buf=[];   // cap: at most 3 questions on screen at once
-      const flush=()=>{ if(buf.length){ SCREENS.push({kind:"items",items:buf}); buf=[]; } };
-      for(const it of items){ if(it.rev){ flush(); SCREENS.push({kind:"items",items:[it]}); }  // reverse item = its own screen
+      const flush=()=>{ if(buf.length){ SCREENS.push({kind:"items",items:buf,scale:name}); buf=[]; } };
+      for(const it of items){ if(it.rev){ flush(); SCREENS.push({kind:"items",items:[it],scale:name}); }  // reverse item = its own screen
         else { buf.push(it); if(buf.length>=n) flush(); } }                                       // others grouped into a round
       flush();
     }
@@ -776,6 +813,7 @@ function render(){
   const el=document.createElement('div'); el.className='moment'+(sc.kind==='reveal'?' reveal':'');
   if(sc.kind==='consent') renderConsent(el);
   else if(sc.kind==='reveal') renderReveal(el,sc);
+  else if(sc.kind==='letter') renderLetter(el,sc.axis);
   else if(sc.kind==='breather') renderBreather(el);
   else if(sc.kind==='belief') renderBelief(el);
   else if(sc.kind==='demo') renderDemo(el,sc.part);
@@ -994,28 +1032,132 @@ function generateReflection(){
 }
 
 /* ===========================================================
+   DECISION-MAKER PROFILE
+   Four axes, one letter earned after each section, building to a
+   four-letter code plus a named persona. Always positively framed:
+   both poles of every axis are a strength, never a deficit.
+   =========================================================== */
+const AXIS={
+  1:{label:"how you weigh",  pos:['H',"You lead with your head. Logic gets the first word."],
+                             neg:['G',"You lead with your gut. Instinct gets the first word."]},
+  2:{label:"your horizon",   pos:['R',"You carry the long memory. You reflect, and you learn."],
+                             neg:['P',"You live in the present. You act on what is in front of you."]},
+  3:{label:"your circle",    pos:['W',"You decide for the whole. Others are in every equation."],
+                             neg:['M',"You trust your own counsel. You own your calls."]},
+  4:{label:"under pressure", pos:['S',"When it heats up, you hold steady."],
+                             neg:['D',"When it heats up, you move boldly."]},
+};
+function axisSide(axis){
+  if(axis===1){ const r=scoreScale(REI).sub; return (r.Rational||0)>=(r.Experiential||0)?'pos':'neg'; }
+  if(axis===2){ const s=scoreScale(SAWS).total; return s>=27?'pos':'neg'; }              // 9..45, midpoint 27
+  if(axis===3){ const m=scoreScale(WDM).sub;   return (m.M5||0)>=15?'pos':'neg'; }       // 5..25, midpoint 15
+  if(axis===4){ let s=0; SJT.forEach(x=>{const a=state.answers[x.code]; if(a) s+=a.weight;}); return s>=18?'pos':'neg'; } // 6..30
+  return 'pos';
+}
+function letterFor(axis){ const a=AXIS[axis][axisSide(axis)]; return {ch:a[0], meaning:a[1]}; }
+function profileCode(){ return [1,2,3,4].map(a=>letterFor(a).ch); }
+const PERSONA={
+  M1:["The Inner Compass","You read your own weather before you read the room, and that self-honesty quietly steadies every call you make."],
+  M2:["The Long-View Navigator","You decide for the version of tomorrow most people forget exists. Time tends to prove you right."],
+  M3:["The Steady Hand","When the room speeds up, you slow down. Composure under pressure is your quiet superpower."],
+  M4:["The Clear-Eyed Realist","You can walk away from a sinking plan without flinching. Ego rarely gets a vote in your decisions."],
+  M5:["The Keeper of the Whole","You decide as though everyone in the room is counted, because to you they are."],
+  M6:["The Bridge-Builder","You hold the spreadsheet and the human story in the same hand, and you trust neither one alone."],
+  M7:["The Reflective Strategist","Every past decision becomes raw material. You turn hindsight into foresight better than most."],
+};
+function personaName(){
+  const m=scoreScale(WDM).sub, keys=Object.keys(m);
+  if(!keys.length) return ["The Emerging Decider","You brought real honesty to this, and candour is the first mark of a wise decision-maker."];
+  keys.sort((a,b)=>m[b]-m[a]);
+  return PERSONA[keys[0]] || ["The Thoughtful Decider","You weigh things with a care that most people skip entirely."];
+}
+function renderLetter(el,axis){
+  const L=letterFor(axis), have=[]; for(let a=1;a<=axis;a++) have.push(letterFor(a).ch);
+  const rest=[]; for(let a=axis+1;a<=4;a++) rest.push('?');
+  el.innerHTML=`<div class="kicker">a piece of your profile</div>
+    <div class="bigletter">${L.ch}</div>
+    <div class="prompt" style="font-size:clamp(19px,3vw,26px)">${esc(L.meaning)}</div>
+    <div class="code">${have.concat(rest).join(' · ')}</div>
+    <button class="go ready" id="goBtn" style="margin-top:28px">Collect it <span aria-hidden="true">→</span></button>`;
+  el.querySelector('#goBtn').addEventListener('click',()=>advance(el));
+}
+
+/* ===========================================================
    FINISH → payload → transmit → closing screen
    =========================================================== */
 function finish(){
   hint.textContent=''; prog.textContent=''; drawThread();
   const scores=computeAll();
+  const persona=personaName(), pname=persona[0], pdesc=persona[1], code=profileCode();
   const payload={ studyId:CONFIG.studyId, respondentId:state.id, theme:state.theme,
     consent:state.consent, startedAt:new Date(state.startedAt||Date.now()).toISOString(), completedAt:new Date().toISOString(),
     demographics:state.demo, AF_00:{belief_coded:state.belief, belief_text:state.beliefText},
-    responses:state.answers, scores };
-  document.getElementById('endKicker').textContent=theme.kicker;
-  document.getElementById('endTitle').textContent='This is how you tend to decide.';
-  document.getElementById('endLine').textContent='No two people share the same shape. Here is a little of yours.';
-  document.getElementById('trivia').innerHTML=generateReflection().map(t=>`<div class="t"><b>◆</b><span>${t}</span></div>`).join('');
-  const R=CONFIG.researcher, more=R.moreLink?`<div class="sig">Follow where it goes: <a href="${esc(R.moreLink)}">${esc(R.moreLink)}</a></div>`:'';
+    responses:state.answers, scores, profile:{ name:pname, code:code.join('') } };
+  /* closes the loop the intro opened: "you're about to meet your own mind" */
+  document.getElementById('endKicker').textContent='so, here you are';
+  document.getElementById('endTitle').textContent=pname;
+  document.getElementById('endLine').innerHTML=`<span class="codebadge">${code.join(' · ')}</span>`;
+  const meanings=[1,2,3,4].map(a=>letterFor(a).meaning);
+  document.getElementById('trivia').innerHTML=
+    `<p style="font-size:15.5px;color:var(--ink);line-height:1.65;font-weight:500;margin-bottom:8px">${esc(pdesc)}</p>`
+    + meanings.map(t=>`<div class="t"><b>◆</b><span>${esc(t)}</span></div>`).join('')
+    + generateReflection().map(t=>`<div class="t"><b>◆</b><span>${esc(t)}</span></div>`).join('');
+
+  /* their own words, back to them (self-verification, and the antidote to horoscope copy) */
+  const said=(state.beliefText||'').trim();
+  const quote = said ? `<div class="quote"><div class="lab">Ten minutes ago, you wrote</div>
+      <div class="q">&ldquo;${esc(said)}&rdquo;</div>
+      <div class="n">You meant it. It kept showing up in the answers that followed.</div></div>` : '';
+
+  /* effort made visible, so the cost reads as an investment */
+  const mins=Math.max(1, Math.round((Date.now()-(state.startedAt||Date.now()))/60000));
+  const answered=Object.keys(state.answers).length;
+  const stats=`<div class="stats">
+      <div class="stat"><div class="k">You thought for</div><div class="v">${mins} min</div></div>
+      <div class="stat"><div class="k">Answers you placed</div><div class="v">${answered}</div></div>
+      <div class="stat"><div class="k">One profile of</div><div class="v">16 possible</div></div>
+    </div>`;
+
+  const R=CONFIG.researcher, more=R.moreLink?`<p>Read more or follow the research: <a href="${esc(R.moreLink)}">${esc(R.moreLink)}</a></p>`:'';
   document.getElementById('about').innerHTML=
-    `<h2>Curious what this becomes?</h2>
-     <p>This research is still unfolding, and your answers are part of it now. Thank you.</p>
-     <p>Findings are used only for academic research. Never anything sensitive, never shared without consent.</p>
+    quote + stats
+    + `<div class="contrib">Most people stop halfway. You didn't. Your ${mins} minutes measurably sharpen what this research can prove.</div>
+     <div class="keep">
+       <h2>Take it with you</h2>
+       <p>Keep your constellation as a card, or have the study's findings sent to you when they land.</p>
+       <div class="row"><button class="btn2" id="cardBtn">Save my card</button></div>
+       <div class="row"><input type="email" id="emailIn" placeholder="your@email.com"><button class="btn2" id="mailBtn">Send me the findings</button></div>
+       <span id="mailMsg" style="display:block;font-size:13px;color:var(--accent);margin-top:8px;font-weight:700"></span>
+     </div>
+     <h2 style="margin-top:24px">Does this feel like you?</h2>
+     <textarea id="agreeTa" rows="3" placeholder="Agree, disagree, or somewhere in between? Tell us why (optional)"></textarea>
+     <h2 style="margin-top:22px">How was this for you?</h2>
+     <textarea id="fbTa" rows="3" placeholder="Anything about the experience we could do better? (optional)"></textarea>
+     <button class="go ready" id="shareBtn" style="margin-top:16px">Share my thoughts <span aria-hidden="true">→</span></button>
+     <span id="shareMsg" style="display:block;font-size:13px;color:var(--accent);margin-top:10px;font-weight:700"></span>
+     <p style="margin-top:24px">Your answers are part of this research now. Used only for academic study, never anything sensitive, never shared without your consent.</p>
      ${more}
      <div class="sig">${esc(R.signature)}<br>${esc(R.affil)}<br><a href="mailto:${esc(R.email)}">${esc(R.email)}</a></div>`;
   document.getElementById('payload').textContent=JSON.stringify(payload,null,2);
-  transmit(payload); show('end'); paintArtifact();
+  transmit(payload); show('end'); animateArtifact();
+
+  const cb=document.getElementById('cardBtn');
+  if(cb) cb.addEventListener('click',()=>downloadCard(pname,code.join('')));
+  const mb=document.getElementById('mailBtn');
+  if(mb) mb.addEventListener('click',()=>{
+    const em=(document.getElementById('emailIn')||{}).value||'';
+    if(!/.+@.+\..+/.test(em)){ document.getElementById('mailMsg').textContent='That email looks incomplete.'; return; }
+    transmit({ type:'contact', studyId:CONFIG.studyId, respondentId:state.id, email:em.trim(), at:new Date().toISOString() });
+    document.getElementById('mailMsg').textContent='Thank you. We will be in touch when the findings land.';
+  });
+  const sb=document.getElementById('shareBtn');
+  if(sb) sb.addEventListener('click',()=>{
+    const ag=document.getElementById('agreeTa'), fb=document.getElementById('fbTa');
+    transmit({ type:'feedback', studyId:CONFIG.studyId, respondentId:state.id, profileCode:code.join(''),
+      profileAgreement:ag?ag.value.trim():'', scaleFeedback:fb?fb.value.trim():'', at:new Date().toISOString() });
+    document.getElementById('shareMsg').textContent='Thank you. Saved.';
+    sb.classList.remove('ready'); sb.style.opacity=.5;
+  });
 }
 function transmit(payload){
   try{ const log=JSON.parse(localStorage.getItem('swdmi_results')||'[]'); log.push(payload); localStorage.setItem('swdmi_results',JSON.stringify(log)); }catch(e){}
@@ -1036,7 +1178,10 @@ function transmit(payload){
    respondentId, so a retry updates the same row instead of duplicating it. */
 function queueUnsent(payload){
   try{ const q=JSON.parse(localStorage.getItem('swdmi_unsent')||'[]');
-    const i=q.findIndex(x=>x&&x.respondentId===payload.respondentId);
+    /* key by respondentId AND type so the main response, contact and feedback
+       payloads (which share a respondentId) queue independently and never
+       overwrite one another. */
+    const i=q.findIndex(x=>x&&x.respondentId===payload.respondentId&&(x.type||'')===(payload.type||''));
     if(i>=0) q[i]=payload; else q.push(payload);
     localStorage.setItem('swdmi_unsent',JSON.stringify(q)); }catch(e){}
 }
@@ -1059,9 +1204,42 @@ async function flushUnsent(){
 /* ===========================================================
    END ARTIFACTS
    =========================================================== */
-function paintArtifact(){
+/* the constellation draws itself, one answer at a time (the peak-end moment) */
+function animateArtifact(){
+  const total=Math.min(state.nodes.filter(Boolean).length,90);
+  const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduce || !total){ paintArtifact(); return; }
+  let k=0; const inc=Math.max(1,Math.round(total/50));
+  (function step(){ k=Math.min(k+inc,total); paintArtifact(k); if(k<total) requestAnimationFrame(step); })();
+}
+/* a keepsake they can take away (endowment: it only exists because they finished) */
+function downloadCard(pname,code){
+  try{
+    const c=document.createElement('canvas'); c.width=1200; c.height=750; const x=c.getContext('2d');
+    const g=x.createLinearGradient(0,0,0,750); g.addColorStop(0,theme.bgA); g.addColorStop(1,theme.bgB);
+    x.fillStyle=g; x.fillRect(0,0,1200,750);
+    const pts=state.nodes.filter(Boolean).slice(0,90);
+    const X=p=>300+(p.x-.16)*760, Y=p=>90+(p.y-.16)*330;
+    x.strokeStyle=theme.accent; x.globalAlpha=.35; x.lineWidth=1.4;
+    for(let i=1;i<pts.length;i++){ x.beginPath(); x.moveTo(X(pts[i-1]),Y(pts[i-1])); x.lineTo(X(pts[i]),Y(pts[i])); x.stroke(); }
+    x.globalAlpha=1;
+    for(const p of pts){ const r=1.6+(p.mag||.8)*3;
+      x.globalAlpha=.35; x.fillStyle=theme.accent2; x.beginPath(); x.arc(X(p),Y(p),r*2,0,7); x.fill(); x.globalAlpha=1;
+      x.fillStyle=theme.accent; x.beginPath(); x.arc(X(p),Y(p),r*0.9,0,7); x.fill(); }
+    x.textAlign='center';
+    x.fillStyle=theme.ink; x.font='500 56px Georgia, serif'; x.fillText(pname,600,570);
+    x.fillStyle=theme.accent; x.font='800 30px ui-monospace, monospace'; x.fillText(code.split('').join('   ·   '),600,630);
+    x.fillStyle=theme.dim; x.font='400 19px Inter, Helvetica, sans-serif';
+    x.fillText('Systemic Wise Decision-Making Inventory',600,692);
+    const a=document.createElement('a'); a.download='my-decision-profile.png'; a.href=c.toDataURL('image/png'); a.click();
+  }catch(e){}
+}
+function paintArtifact(k){
   const c=document.getElementById('artifact'), x=c.getContext('2d'), w=c.width, h=c.height;
-  x.clearRect(0,0,w,h); const pts=state.nodes.filter(Boolean).slice(0,90), ac=theme.accent, a2=theme.accent2;
+  x.clearRect(0,0,w,h);
+  let pts=state.nodes.filter(Boolean).slice(0,90);
+  if(typeof k==='number') pts=pts.slice(0,k);
+  const ac=theme.accent, a2=theme.accent2;
   if(theme.mode==='heartwood') return paintTree(x,w,h,pts,ac,a2);
   if(theme.mode==='tide') return paintCurrent(x,w,h,pts,ac,a2);
   for(let i=1;i<pts.length;i++){ x.beginPath(); x.moveTo(pts[i-1].x*w,pts[i-1].y*h); x.lineTo(pts[i].x*w,pts[i].y*h);
@@ -1122,25 +1300,48 @@ function hideAll(){ ['intro','resume','end','bye'].forEach(k=>document.getElemen
 document.querySelectorAll('.theme').forEach(t=>t.addEventListener('click',()=>{
   document.querySelectorAll('.theme').forEach(x=>x.classList.remove('sel')); t.classList.add('sel');
   state.theme=t.dataset.th; applyTheme(state.theme); }));
-/* ---- hidden admin: tap the sound toggle 4× quickly to jump to any screen ---- */
+/* ---- hidden admin: tap the sound toggle 4× quickly to unlock a floating
+   Admin button (top-left); click it to open the jump-to-screen menu. ---- */
 function screenLabel(sc){
   switch(sc.kind){
     case 'consent':  return 'Consent';
     case 'belief':   return 'Belief question';
-    case 'demo':     return 'Demographics '+sc.part;
+    case 'demo':     return 'Demographics — part '+sc.part;
     case 'breather': return 'Breather';
-    case 'reveal':   return 'Reveal — '+String(sc.q||'').slice(0,42);
-    case 'items':    { const codes=sc.items.map(it=>it.code); return codes[0].split('_')[0]+' · '+codes.join(', '); }
+    case 'letter':   return 'Profile letter — axis '+sc.axis+(AXIS[sc.axis]?' · '+AXIS[sc.axis].label:'');
+    case 'reveal':   return 'Interlude — "'+String(sc.q||'').slice(0,46)+'"';
+    case 'items':    {
+      const codes=sc.items, solo=codes.length===1, rev=codes.some(it=>it.rev);
+      const tag=solo?(rev?'1 item · reverse':'1 item'):(codes.length+' items'+(rev?' · incl. reverse':''));
+      return (sc.scale||codes[0].code.split('_')[0])+' · '+tag;
+    }
     case 'sjt':      return 'SJT — '+(sc.sc.title||sc.sc.code);
     default:         return sc.kind;
   }
 }
+/* the smaller second line: exactly what's on that screen */
+function screenDetail(sc){
+  if(sc.kind==='items'){ const codes=sc.items.map(it=>it.code).join(', ');
+    const q=sc.items[0].q||''; return codes+' — “'+q.slice(0,64)+(q.length>64?'…':'')+'”'; }
+  if(sc.kind==='sjt'){ const q=sc.sc.q||''; return q.slice(0,110)+(q.length>110?'…':''); }
+  if(sc.kind==='reveal') return sc.sub||'';
+  if(sc.kind==='letter'){ const A=AXIS[sc.axis]; return A?A.pos[0]+' vs '+A.neg[0]:''; }
+  if(sc.kind==='demo') return sc.part===1?'name, age, gender, marital, family, geo':'education, profession, designation, experience, sector, income';
+  if(sc.kind==='belief') return 'the seed belief + optional free text';
+  return '';
+}
 function openAdminPanel(){
   const ex=document.getElementById('admin'); if(ex) ex.remove();
   const ov=document.createElement('div'); ov.id='admin';
-  ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(10,12,20,.92);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);display:flex;flex-direction:column;padding:16px;font-family:Inter,sans-serif;';
-  const rows=SCREENS.map((sc,i)=>`<button data-i="${i}" style="text-align:left;display:block;width:100%;margin:0 0 6px;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.18);background:${i===state.idx?'rgba(74,111,240,.55)':'rgba(255,255,255,.06)'};color:#fff;font:600 13px/1.35 Inter,sans-serif;cursor:pointer;">${i}. ${esc(screenLabel(sc))}</button>`).join('');
-  ov.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;color:#fff;">
+  ov.style.cssText='position:fixed;inset:0;z-index:10000;background:rgba(10,12,20,.94);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);display:flex;flex-direction:column;padding:16px;font-family:Inter,sans-serif;';
+  const rows=SCREENS.map((sc,i)=>{
+    const cur=i===state.idx, det=esc(screenDetail(sc));
+    return `<button data-i="${i}" style="text-align:left;display:block;width:100%;margin:0 0 6px;padding:9px 12px;border-radius:9px;border:1px solid ${cur?'rgba(120,150,255,.7)':'rgba(255,255,255,.16)'};background:${cur?'rgba(74,111,240,.5)':'rgba(255,255,255,.05)'};color:#fff;cursor:pointer;">
+        <div style="font:800 13px/1.3 Inter,sans-serif;">${cur?'▸ ':''}${i}. ${esc(screenLabel(sc))}</div>
+        ${det?`<div style="font:500 11.5px/1.4 Inter,sans-serif;opacity:.62;margin-top:2px;">${det}</div>`:''}
+      </button>`;
+  }).join('');
+  ov.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;color:#fff;">
       <div style="font-weight:800;font-size:15px;">Admin · jump to screen <span style="opacity:.6;font-weight:600;">(${SCREENS.length} total)</span></div>
       <button id="adminClose" style="padding:8px 15px;border-radius:8px;border:none;background:#4a6ff0;color:#fff;font:700 13px Inter,sans-serif;cursor:pointer;">Close</button>
     </div>
@@ -1149,13 +1350,26 @@ function openAdminPanel(){
   ov.querySelector('#adminClose').addEventListener('click',()=>ov.remove());
   ov.querySelectorAll('button[data-i]').forEach(b=>b.addEventListener('click',()=>{
     state.idx=+b.dataset.i; save(); ov.remove(); hideAll(); render(); }));
+  const cur=ov.querySelector('button[data-i="'+state.idx+'"]'); if(cur) cur.scrollIntoView({block:'center'});
+}
+/* the persistent floating launcher, shown only once admin is unlocked */
+let adminOn=false;
+function activateAdmin(){
+  if(adminOn) return; adminOn=true;
+  const fab=document.createElement('button'); fab.id='adminFab';
+  fab.innerHTML='☰ Admin';
+  fab.style.cssText='position:fixed;top:12px;left:12px;z-index:9997;padding:8px 13px;border-radius:20px;border:1px solid rgba(120,150,255,.5);background:rgba(20,26,44,.82);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);color:#cdd8ff;font:800 12px Inter,sans-serif;letter-spacing:.03em;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.35);';
+  fab.title='Admin — jump to any screen (double-click to hide)';
+  fab.addEventListener('click',openAdminPanel);
+  fab.addEventListener('dblclick',(e)=>{ e.preventDefault(); fab.remove(); adminOn=false; });  // double-click to hide again
+  document.body.appendChild(fab);
 }
 const sbtn=document.getElementById('sndbtn');
 let sndTaps=0, sndTapT=0;
 sbtn.addEventListener('click',()=>{
   const m=!Sound.isMuted(); Sound.setMuted(m); sbtn.textContent=m?'Sound off':'Sound on';
   const now=Date.now(); sndTaps=(now-sndTapT<1500)?sndTaps+1:1; sndTapT=now;
-  if(sndTaps>=4){ sndTaps=0; openAdminPanel(); }
+  if(sndTaps>=4){ sndTaps=0; activateAdmin(); }
 });
 document.getElementById('beginBtn').addEventListener('click',()=>{ const th=state.theme; state=fresh(th); buildScreens(); save(); hideAll(); render(); try{ Sound.setMuted(false); sbtn.textContent='Sound on'; }catch(e){} });
 document.getElementById('resumeBtn').addEventListener('click',()=>{ hideAll(); render(); });

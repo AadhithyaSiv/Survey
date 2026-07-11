@@ -24,21 +24,44 @@
  *     ▸ edit ▸ Version: "New version" so the live URL runs your latest code.
  */
 
-const SHEET_NAME = 'Responses';
-const ID_COLUMN  = 'respondentId';   // upsert key
+const SHEET_NAME  = 'Responses';
+const CONTACT_SHEET  = 'Contacts';   // "send me the findings" email captures
+const FEEDBACK_SHEET = 'Feedback';   // "does this feel like you?" / experience feedback
+const ID_COLUMN   = 'respondentId';  // upsert key
 
 function doPost(e) {
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);              // serialize concurrent submissions
   try {
     const data = JSON.parse(e.postData.contents);
-    writeRow(flatten(data));
+    // Optional side-channel payloads from the end screen. They carry the same
+    // respondentId as the main response, so they MUST go to their own sheets —
+    // otherwise the upsert would overwrite the completed response row.
+    if (data.type === 'contact') {
+      writeRow(flattenContact(data), CONTACT_SHEET, ID_COLUMN);
+    } else if (data.type === 'feedback') {
+      writeRow(flattenFeedback(data), FEEDBACK_SHEET, ID_COLUMN);
+    } else {
+      writeRow(flatten(data), SHEET_NAME, ID_COLUMN);
+    }
     return json({ ok: true });
   } catch (err) {
     return json({ ok: false, error: String(err) });
   } finally {
     lock.releaseLock();
   }
+}
+
+/* Email capture ("Send me the findings"). One row per respondent. */
+function flattenContact(p) {
+  return { receivedAt: new Date(), studyId: p.studyId || '',
+           respondentId: p.respondentId || '', email: p.email || '', at: p.at || '' };
+}
+/* Profile-agreement + experience feedback ("Share my thoughts"). One row per respondent. */
+function flattenFeedback(p) {
+  return { receivedAt: new Date(), studyId: p.studyId || '', respondentId: p.respondentId || '',
+           profileCode: p.profileCode || '', profileAgreement: p.profileAgreement || '',
+           scaleFeedback: p.scaleFeedback || '', at: p.at || '' };
 }
 
 // Lets you open the /exec URL in a browser to confirm it's live.
@@ -107,6 +130,10 @@ function flatten(p) {
     }
   });
 
+  const pr = p.profile || {};             // the 4-letter decision-maker profile
+  r.profile_name = pr.name || '';
+  r.profile_code = pr.code || '';
+
   return r;
 }
 
@@ -114,9 +141,9 @@ function flatten(p) {
  * Write one flat row: create/extend the header row as needed, then upsert
  * by respondentId (update existing row, else append).
  * ------------------------------------------------------------------------ */
-function writeRow(row) {
+function writeRow(row, sheetName, idColumn) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sh = ss.getSheetByName(SHEET_NAME) || ss.insertSheet(SHEET_NAME);
+  const sh = ss.getSheetByName(sheetName) || ss.insertSheet(sheetName);
 
   let headers = sh.getLastColumn()
     ? sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0]
@@ -132,13 +159,13 @@ function writeRow(row) {
 
   const values = headers.map(function (h) { return row[h] === undefined ? '' : row[h]; });
 
-  // Upsert by respondentId.
-  const idCol = headers.indexOf(ID_COLUMN);
+  // Upsert by idColumn (within this sheet only).
+  const idCol = headers.indexOf(idColumn);
   let targetRow = 0;
-  if (idCol !== -1 && row[ID_COLUMN] && sh.getLastRow() > 1) {
+  if (idCol !== -1 && row[idColumn] && sh.getLastRow() > 1) {
     const ids = sh.getRange(2, idCol + 1, sh.getLastRow() - 1, 1).getValues();
     for (let i = 0; i < ids.length; i++) {
-      if (ids[i][0] === row[ID_COLUMN]) { targetRow = i + 2; break; }
+      if (ids[i][0] === row[idColumn]) { targetRow = i + 2; break; }
     }
   }
 
