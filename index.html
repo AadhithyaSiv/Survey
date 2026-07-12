@@ -47,6 +47,8 @@
   .moment.consent .prompt{font-size:clamp(31px,5.8vw,48px); line-height:1.24;}
   .moment.consent .sub{font-size:clamp(17px,2.4vw,21px); line-height:1.6; margin-top:22px;}
   .moment.consent .checkrow span{font-size:16px; line-height:1.55;}
+  /* SJT scenarios: wider, more rectangular block so the situation reads like a paragraph */
+  .moment.sjtwide{max-width:760px;}
 
   .cells{display:flex; gap:10px; margin:34px auto 0; justify-content:center; max-width:600px; flex-wrap:wrap;}
   .cells.num{gap:8px;}
@@ -204,9 +206,9 @@
 
   <div class="overlay show" id="intro">
     <div class="panel">
-      <h1>You're about to meet your own mind.</h1>
-      <p id="blurb">The way you make decisions is as distinctive as a fingerprint, and most people never stop to look at theirs. Give it about ten unhurried minutes. Pick a world you like, move at your own pace, and at the end you'll meet a portrait of how you really decide.</p>
-      <p style="margin-top:18px; font-weight:600; color:var(--ink)">Choose the world you'll move through:</p>
+      <h1>Did you know your decision-making style is as unique as a fingerprint?</h1>
+      <p id="blurb">It runs quietly behind how and why you decide the way you do — and you've probably never seen it laid out. Don't worry: in the next ten minutes, you will. At the end, you'll meet your Decision Persona — a portrait of how your mind really works when the stakes are high and the choice is critical.</p>
+      <p style="margin-top:18px; font-weight:600; color:var(--ink)">First, pick a world to move through. Go at your own pace — there are no right or wrong answers here, only yours.</p>
       <div class="themes" id="themePicker">
         <div class="theme sel" data-th="wallstreet"><span class="dot" style="background:#17c07b"></span>Wall Street</div>
         <div class="theme" data-th="alaska"><span class="dot" style="background:#3b82c4"></span>Alaska</div>
@@ -215,6 +217,7 @@
         <div class="theme" data-th="jigsaw"><span class="dot" style="background:#ff7a59"></span>Jigsaw</div>
         <div class="theme" data-th="gameworld"><span class="dot" style="background:#ff3ea5"></span>Game World</div>
       </div>
+      <p style="margin-top:20px; font-weight:700; color:var(--ink)">Ready to find out?</p>
       <button class="go ready" id="beginBtn">Begin <span aria-hidden="true">→</span></button>
       <p class="micro">Confidential. Saved as you go. Pause and return anytime.</p>
     </div>
@@ -273,7 +276,8 @@ const RESP = {
   L5:   {labels:["Strongly disagree","Disagree","Neither","Agree","Strongly agree"], vals:[1,2,3,4,5], rev:v=>6-v},
   REI5: {labels:["Completely false","Mostly false","Neither true nor false","Mostly true","Completely true"], vals:[1,2,3,4,5], rev:v=>6-v},
   ERQ7: {labels:["Strongly disagree","Disagree","Somewhat disagree","Neutral","Somewhat agree","Agree","Strongly agree"], vals:[1,2,3,4,5,6,7], rev:v=>8-v},
-  BIP9: {num:true, labels:["−4","−3","−2","−1","0","+1","+2","+3","+4"], vals:[-4,-3,-2,-1,0,1,2,3,4], rev:v=>-v, anchorL:"Disagree strongly", anchorR:"Agree strongly"},
+  L6:   {labels:["Strongly disagree","Moderately disagree","Slightly disagree","Slightly agree","Moderately agree","Strongly agree"], vals:[1,2,3,4,5,6], rev:v=>7-v},
+  BIP9: {num:true, labels:["−4","−3","−2","−1","0","+1","+2","+3","+4"], vals:[-4,-3,-2,-1,0,1,2,3,4], rev:v=>-v, anchorL:"Strongly disagree", anchorR:"Strongly agree"},
 };
 function respOf(it){ return RESP[it.resp||'L5']; }
 
@@ -300,21 +304,21 @@ const SD3 = [
   {code:"NARC_16",s:"Narc",q:"I have been compared to famous people."},
   {code:"NARC_17",s:"Narc",rev:true,q:"I am an average person."},
   {code:"NARC_18",s:"Narc",q:"I insist on getting the respect I deserve."},
-  {code:"PSY_19",s:"Psy",q:"I like to get revenge on authorities."},
+  {code:"PSY_19",s:"Psy",q:"I like to get even with authorities."},
   {code:"PSY_20",s:"Psy",rev:true,q:"I avoid dangerous situations."},
   {code:"PSY_21",s:"Psy",q:"Payback needs to be quick and nasty."},
   {code:"PSY_22",s:"Psy",q:"People often say I'm out of control."},
   {code:"PSY_23",s:"Psy",q:"It's true that I can be mean to others."},
   {code:"PSY_24",s:"Psy",q:"People who mess with me always regret it."},
   {code:"PSY_25",s:"Psy",rev:true,q:"I have never gotten into trouble with the law."},
-  {code:"PSY_26",s:"Psy",q:"I enjoy having sex with people I hardly know."},
+  {code:"PSY_26",s:"Psy",q:"I can enjoy having intimacy with strangers or with people I hardly know."},
   {code:"PSY_27",s:"Psy",q:"I'll say anything to get what I want."},
 ];
 /* Light Triad · 1–5 · reverse confirmed from source doc */
 const LTS = [
   {code:"EMP_01",s:"Empathy",rev:true,q:"It is hard for me to see why some things upset people so much."},
   {code:"EMP_02",s:"Empathy",q:"When someone is feeling 'down' I can usually understand how they feel."},
-  {code:"EMP_03",s:"Empathy",q:"I find it easy to put myself in somebody else's shoes."},
+  {code:"EMP_03",s:"Empathy",q:"I find it easy to empathise and see things from people's perspective."},
   {code:"EMP_04",s:"Empathy",rev:true,q:"I have a hard time reading people's emotion."},
   {code:"COMP_05",s:"Compassion",q:"I often have tender, concerned feelings for people less fortunate than me."},
   {code:"COMP_06",s:"Compassion",q:"My heart goes out to people who are unhappy."},
@@ -383,17 +387,17 @@ const SES = [
   {code:"SES_10",s:"C",q:"I am highly confident that my background makes me better suited to make choices for others than they are themselves."},
   {code:"SES_11",s:"C",q:"I feel small respect for the intellectual capabilities of people who do not share my background/status."},
 ];
-/* SAWS · 1–5 · no reverse indicated */
+/* SAWS · 1–6 (no neutral point) · no reverse indicated */
 const SAWS = [
-  {code:"SAWS_01",s:"Wisdom",q:"I have made important decisions throughout my life."},
-  {code:"SAWS_02",s:"Wisdom",q:"Reviewing my past gives me a good perspective on my current concerns."},
-  {code:"SAWS_03",s:"Wisdom",q:"I can easily express my emotions without feeling like I am losing control of the situation."},
-  {code:"SAWS_04",s:"Wisdom",q:"I often recall the past to see if I have changed since then."},
-  {code:"SAWS_05",s:"Wisdom",q:"I am good at identifying subtle emotions in myself."},
-  {code:"SAWS_06",s:"Wisdom",q:"I often use humour to put other people at ease."},
-  {code:"SAWS_07",s:"Wisdom",q:"Now I know I can truly appreciate the little things in life."},
-  {code:"SAWS_08",s:"Wisdom",q:"I have learned valuable life lessons with others."},
-  {code:"SAWS_09",s:"Wisdom",q:"I often wonder about the mysteries of life and what lies beyond death."},
+  {code:"SAWS_01",s:"Wisdom",resp:"L6",q:"I have made important decisions throughout my life."},
+  {code:"SAWS_02",s:"Wisdom",resp:"L6",q:"Reviewing my past gives me a good perspective on my current concerns."},
+  {code:"SAWS_03",s:"Wisdom",resp:"L6",q:"I can easily express my emotions without feeling like I am losing control of the situation."},
+  {code:"SAWS_04",s:"Wisdom",resp:"L6",q:"I often recall the past to see if I have changed since then."},
+  {code:"SAWS_05",s:"Wisdom",resp:"L6",q:"I am good at identifying subtle emotions in myself."},
+  {code:"SAWS_06",s:"Wisdom",resp:"L6",q:"I often use humour to put other people at ease."},
+  {code:"SAWS_07",s:"Wisdom",resp:"L6",q:"Now I know I can truly appreciate the little things in life."},
+  {code:"SAWS_08",s:"Wisdom",resp:"L6",q:"I have learned valuable life lessons with others."},
+  {code:"SAWS_09",s:"Wisdom",resp:"L6",q:"I often wonder about the mysteries of life and what lies beyond death."},
 ];
 /* MCSDS · 1–5 · embedded filter (Phase 2) */
 const MCSDS = [
@@ -533,7 +537,7 @@ const SECTIONS = [
   {id:"reveal", k:"the heart of it", q:"This is where the real portrait forms.", sub:"You're closer to the picture than you think."},
   {id:"scale", scale:WDM},
   {id:"letter", axis:3},
-  {id:"reveal", k:"the moment of truth", q:"Now, a few real situations.", sub:"Not what you should do. What you would."},
+  {id:"reveal", k:"the moment of truth", q:"Finally, a few real situations.", sub:"Not what you should do. What you would."},
   {id:"sjt"},
   {id:"letter", axis:4},
   {id:"scale", scale:DSQ},
@@ -829,9 +833,9 @@ function addNode(val){ const i=state.nodes.length, ang=i*2.39996, rad=0.30+(i/Ma
 function renderConsent(el){
   el.classList.add('consent');
   el.innerHTML=`<div class="kicker">before we begin</div>
-    <div class="prompt">Do you consent to take part?</div>
-    <p class="sub">This is doctoral research into how people really make decisions. Whatever you share stays strictly confidential, is used only for academic study, and is never used anywhere without your say-so. No sensitive results, no judgement, just honest curiosity about the way you think.</p>
-    <label class="checkrow"><input type="checkbox" id="share" checked><span>I'm happy for my anonymised responses to be used in the findings. Uncheck if you'd rather we didn't, that's completely fine.</span></label>
+    <div class="prompt">Do you consent to be part of this study?</div>
+    <p class="sub">All your responses stay strictly confidential, are used only for this academic study, and never appear anywhere that identifies you. No judgement — just honest curiosity about how you think as a decision-maker.</p>
+    <label class="checkrow"><input type="checkbox" id="share" checked><span>I'm happy for my anonymised responses to be used in the research findings.</span></label>
     <button class="go ready" id="goBtn" style="margin-top:24px">Yes, I consent <span aria-hidden="true">→</span></button>
     <button class="skip" id="no">I'd rather not take part</button>`;
   el.querySelector('#goBtn').addEventListener('click',()=>{
@@ -857,12 +861,12 @@ function renderBreather(el){
   el.querySelector('#goBtn').addEventListener('click',()=>{ if(au){try{au.pause();}catch(e){}} advance(el); });
 }
 function renderBelief(el){
-  el.innerHTML=`<div class="kicker">to begin</div><div class="prompt">Some people are born better decision-makers than others.</div>
+  el.innerHTML=`<div class="kicker">a quick one to start</div><div class="prompt">Some people are just born better decision-makers than others.</div>
     <div class="sub">Do you believe this?</div>
     <div class="cards" id="b">
-      ${["Yes, I believe so","Unsure","No, I do not believe so"].map((x,i)=>`<div class="card" data-i="${i}">${x}</div>`).join('')}
+      ${["Yes, I believe so","Not sure","No, I don't"].map((x,i)=>`<div class="card" data-i="${i}">${x}</div>`).join('')}
     </div>
-    <div class="kbhint">tap, or press 1, 2 or 3</div>
+    <div class="kbhint">tap, or press 1 · 2 · 3</div>
     <textarea id="bt" rows="3" placeholder="Share your thinking, if you like (optional)"></textarea>
     <div><button class="go ready" id="goBtn">Continue <span aria-hidden="true">→</span></button></div>`;
   let picked=null;
@@ -885,7 +889,7 @@ function field(f){ const [k,lab,type]=f, opt=(type&&type.opt); const star=opt?''
   return `<div class="field"><label>${lab}${star}</label><input data-k="${k}" data-req="${opt?0:1}" type="${tp}" value="${esc(state.demo[k]||'')}"></div>`; }
 function renderDemo(el,part){
   const fields=(part===1?DEMO1:DEMO2);
-  el.innerHTML=`<div class="prompt">${part===1?'But first, the basics.':'For context.'}</div>
+  el.innerHTML=`<div class="prompt">${part===1?'The basics.':'For context.'}</div>
     <p class="sub">${part===1?'Quick and completely private. No grades, no judgement, no right answers.':'Almost there. Same deal, all kept in strict confidence.'}</p>
     <div class="dform">${fields.map(field).join('')}</div>
     <button class="go" id="goBtn" style="margin-top:24px">Continue <span aria-hidden="true">→</span></button>`;
@@ -902,7 +906,7 @@ function renderDemo(el,part){
 }
 function renderItems(el,items){
   const solo=items.length===1, R=respOf(items[0]);
-  const cls='cells'+(R.num?' num':'')+(!R.num&&R.labels.length>=7?' compact':'');
+  const cls='cells'+(R.num?' num':'')+(!R.num&&R.labels.length>=6?' compact':'');
   const anch=R.anchorL?`<div class="anchz"><span>${esc(R.anchorL)}</span><span>${esc(R.anchorR)}</span></div>`:'';
   const row=(qi)=>`<div class="${cls}" data-c="${qi}">${R.labels.map((x,i)=>`<div class="cell" data-i="${i}">${esc(x)}</div>`).join('')}</div>${anch}`;
   let html;
@@ -946,8 +950,9 @@ function onKey(e){
   }
 }
 function renderSJT(el,sc){
+  el.classList.add('sjtwide');
   el.innerHTML=`<div class="kicker">what would you actually do?</div>
-    <div class="prompt" style="font-size:clamp(17px,2.6vw,21px)">${esc(sc.q)}</div>
+    <div class="prompt" style="font-size:clamp(20px,3.2vw,27px); line-height:1.42">${esc(sc.q)}</div>
     <div class="col" id="opts">${sc.options.map((o,i)=>`<div class="card" data-i="${i}"><span class="ol">${o.L}</span>${esc(o.t)}</div>`).join('')}</div>
     <div class="kbhint">tap, or press A to E</div>`;
   el.querySelectorAll('#opts .card').forEach(c=>c.addEventListener('click',()=>{
@@ -1049,7 +1054,7 @@ const AXIS={
 };
 function axisSide(axis){
   if(axis===1){ const r=scoreScale(REI).sub; return (r.Rational||0)>=(r.Experiential||0)?'pos':'neg'; }
-  if(axis===2){ const s=scoreScale(SAWS).total; return s>=27?'pos':'neg'; }              // 9..45, midpoint 27
+  if(axis===2){ const s=scoreScale(SAWS).total; return s>=32?'pos':'neg'; }              // 9..54 (6-pt), midpoint 31.5
   if(axis===3){ const m=scoreScale(WDM).sub;   return (m.M5||0)>=15?'pos':'neg'; }       // 5..25, midpoint 15
   if(axis===4){ let s=0; SJT.forEach(x=>{const a=state.answers[x.code]; if(a) s+=a.weight;}); return s>=18?'pos':'neg'; } // 6..30
   return 'pos';
@@ -1129,13 +1134,13 @@ function finish(){
        <div class="row"><input type="email" id="emailIn" placeholder="your@email.com"><button class="btn2" id="mailBtn">Send me the findings</button></div>
        <span id="mailMsg" style="display:block;font-size:13px;color:var(--accent);margin-top:8px;font-weight:700"></span>
      </div>
-     <h2 style="margin-top:24px">Does this feel like you?</h2>
-     <textarea id="agreeTa" rows="3" placeholder="Agree, disagree, or somewhere in between? Tell us why (optional)"></textarea>
-     <h2 style="margin-top:22px">How was this for you?</h2>
+     <h2 style="margin-top:24px">Does this persona feel like you?</h2>
+     <textarea id="agreeTa" rows="3" placeholder="Why / why not? (optional)"></textarea>
+     <h2 style="margin-top:22px">How was this experience for you?</h2>
      <textarea id="fbTa" rows="3" placeholder="Anything about the experience we could do better? (optional)"></textarea>
      <button class="go ready" id="shareBtn" style="margin-top:16px">Share my thoughts <span aria-hidden="true">→</span></button>
      <span id="shareMsg" style="display:block;font-size:13px;color:var(--accent);margin-top:10px;font-weight:700"></span>
-     <p style="margin-top:24px">Your answers are part of this research now. Used only for academic study, never anything sensitive, never shared without your consent.</p>
+     <p style="margin-top:24px">Your answers are part of this research now. Used only for academic study — nothing sensitive, never shared without your consent.</p>
      ${more}
      <div class="sig">${esc(R.signature)}<br>${esc(R.affil)}<br><a href="mailto:${esc(R.email)}">${esc(R.email)}</a></div>`;
   document.getElementById('payload').textContent=JSON.stringify(payload,null,2);
@@ -1330,15 +1335,20 @@ function screenDetail(sc){
   if(sc.kind==='belief') return 'the seed belief + optional free text';
   return '';
 }
+/* the 1–3 sub-scales this screen actually tests (a round can club a few together) */
+function screenSubs(sc){ return sc.kind==='items' ? [...new Set(sc.items.map(it=>it.s))] : []; }
 function openAdminPanel(){
   const ex=document.getElementById('admin'); if(ex) ex.remove();
   const ov=document.createElement('div'); ov.id='admin';
   ov.style.cssText='position:fixed;inset:0;z-index:10000;background:rgba(10,12,20,.94);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);display:flex;flex-direction:column;padding:16px;font-family:Inter,sans-serif;';
   const rows=SCREENS.map((sc,i)=>{
     const cur=i===state.idx, det=esc(screenDetail(sc));
+    const subs=screenSubs(sc);
+    const chips=subs.length?`<div style="margin-top:4px;">`+subs.map(s=>`<span style="display:inline-block;margin:0 5px 2px 0;padding:1px 8px;border-radius:6px;background:rgba(120,150,255,.22);border:1px solid rgba(120,150,255,.45);color:#dbe4ff;font:800 10.5px/1.5 Inter,sans-serif;letter-spacing:.02em;">${esc(s)}</span>`).join('')+`</div>`:'';
     return `<button data-i="${i}" style="text-align:left;display:block;width:100%;margin:0 0 6px;padding:9px 12px;border-radius:9px;border:1px solid ${cur?'rgba(120,150,255,.7)':'rgba(255,255,255,.16)'};background:${cur?'rgba(74,111,240,.5)':'rgba(255,255,255,.05)'};color:#fff;cursor:pointer;">
         <div style="font:800 13px/1.3 Inter,sans-serif;">${cur?'▸ ':''}${i}. ${esc(screenLabel(sc))}</div>
-        ${det?`<div style="font:500 11.5px/1.4 Inter,sans-serif;opacity:.62;margin-top:2px;">${det}</div>`:''}
+        ${chips}
+        ${det?`<div style="font:500 11.5px/1.4 Inter,sans-serif;opacity:.62;margin-top:3px;">${det}</div>`:''}
       </button>`;
   }).join('');
   ov.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;color:#fff;">
