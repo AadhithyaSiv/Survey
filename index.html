@@ -64,13 +64,13 @@
   .cell.chosen{background:var(--accent); color:#fff; border-color:var(--accent); transform:scale(1.09);}
   .anchz{display:flex; justify-content:space-between; max-width:600px; margin:12px auto 0; color:var(--ink-dim); font-size:13px; font-weight:700; gap:14px;}
   .anchz span:last-child{text-align:right;}
-  .rhint{font-size:14px; color:var(--ink-dim); font-weight:500; margin-bottom:4px;}
+  .rhint{font-size:17px; color:var(--ink-dim); font-weight:600; margin-bottom:6px;}
   .qblock{margin-top:24px; padding-top:24px; border-top:1px solid var(--line);}
   .qblock:first-of-type{border-top:none; padding-top:10px;}
   .qtext{font-family:'Newsreader',Georgia,serif; font-size:clamp(18px,2.6vw,23px); line-height:1.36; font-weight:500;}
   .qblock .cells{margin-top:16px;}
   .qblock.focus{background:rgba(120,120,170,.06); border-radius:14px; padding-left:12px; padding-right:12px;}
-  .kbhint{font-size:12px; color:var(--ink-dim); opacity:.7; margin-top:16px; font-weight:600; letter-spacing:.02em;}
+  .kbhint{font-size:14px; color:var(--ink-dim); opacity:.75; margin-top:16px; font-weight:600; letter-spacing:.02em;}
   /* decision-maker profile + expanded end screen */
   .bigletter{font-family:'Newsreader',Georgia,serif; font-size:clamp(60px,15vw,116px); font-weight:500; color:var(--accent); line-height:1; margin:4px 0 12px;}
   .code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.25em; font-size:15px; color:var(--ink-dim); font-weight:700; margin-top:16px;}
@@ -170,7 +170,7 @@
 
   #artifact{margin:20px auto 4px; display:block; border-radius:20px; background:var(--paper); box-shadow:0 8px 22px rgba(90,60,150,.14); max-width:100%;}
   .trivia{margin:16px auto 0; max-width:480px; text-align:left;}
-  .trivia .t{display:flex; gap:11px; align-items:flex-start; margin-top:12px; font-size:14.5px; color:var(--ink); line-height:1.55; font-weight:600;}
+  .trivia .t{display:flex; gap:11px; align-items:flex-start; margin-top:14px; font-size:16.5px; color:var(--ink); line-height:1.6; font-weight:600;}
   .trivia .t b{color:var(--accent); font-weight:800;}
   .about{margin:24px auto 0; max-width:520px; text-align:left; border-top:2px solid var(--line); padding-top:20px;}
   .about h2{font-size:17px; font-weight:800; margin-bottom:8px;}
@@ -206,9 +206,11 @@
 
   <div class="overlay show" id="intro">
     <div class="panel">
+      <div class="kicker">The Decision DNA</div>
       <h1>Did you know your decision-making style is as unique as a fingerprint?</h1>
-      <p id="blurb">It runs quietly behind how and why you decide the way you do — and you've probably never seen it laid out. Don't worry: in the next ten minutes, you will. At the end, you'll meet your Decision Persona — a portrait of how your mind really works when the stakes are high and the choice is critical.</p>
-      <p style="margin-top:18px; font-weight:600; color:var(--ink)">First, pick a world to move through. Go at your own pace — there are no right or wrong answers here, only yours.</p>
+      <p id="blurb">It runs quietly behind how you decide, and you've probably never seen it laid out for you.</p>
+      <p>So, ready to uncover it? In the next few minutes, you will. At the end, you'll meet your Decision Persona: a portrait of how your mind works when the stakes are high and the decisions are critical.</p>
+      <p style="margin-top:18px; font-weight:600; color:var(--ink)">First, pick a world to move through.</p>
       <div class="themes" id="themePicker">
         <div class="theme sel" data-th="wallstreet"><span class="dot" style="background:#17c07b"></span>Wall Street</div>
         <div class="theme" data-th="alaska"><span class="dot" style="background:#3b82c4"></span>Alaska</div>
@@ -217,9 +219,9 @@
         <div class="theme" data-th="jigsaw"><span class="dot" style="background:#ff7a59"></span>Jigsaw</div>
         <div class="theme" data-th="gameworld"><span class="dot" style="background:#ff3ea5"></span>Game World</div>
       </div>
-      <p style="margin-top:20px; font-weight:700; color:var(--ink)">Ready to find out?</p>
       <button class="go ready" id="beginBtn">Begin <span aria-hidden="true">→</span></button>
-      <p class="micro">Confidential. Saved as you go. Pause and return anytime.</p>
+      <p style="margin-top:20px; font-weight:600; color:var(--ink)">Go at your own pace. There are no right or wrong answers here, only your honest, candid choices.</p>
+      <p class="micro">Completely confidential. Every answer saves as you go, so you can pause and pick up right where you left off, anytime.</p>
     </div>
   </div>
 
@@ -834,7 +836,7 @@ function renderConsent(el){
   el.classList.add('consent');
   el.innerHTML=`<div class="kicker">before we begin</div>
     <div class="prompt">Do you consent to be part of this study?</div>
-    <p class="sub">All your responses stay strictly confidential, are used only for this academic study, and never appear anywhere that identifies you. No judgement — just honest curiosity about how you think as a decision-maker.</p>
+    <p class="sub">All your responses stay strictly confidential. They will be used only for this academic study, and would never appear anywhere that identifies you. There is no judgement — just honest curiosity about how you think as a decision-maker.</p>
     <label class="checkrow"><input type="checkbox" id="share" checked><span>I'm happy for my anonymised responses to be used in the research findings.</span></label>
     <button class="go ready" id="goBtn" style="margin-top:24px">Yes, I consent <span aria-hidden="true">→</span></button>
     <button class="skip" id="no">I'd rather not take part</button>`;
@@ -843,7 +845,7 @@ function renderConsent(el){
   el.querySelector('#no').addEventListener('click',()=>{ state.consent={participate:false, at:new Date().toISOString()}; save(); show('bye'); });
 }
 function renderReveal(el,sc){
-  el.innerHTML=(sc.k?`<div class="kicker">${esc(sc.k)}</div>`:'')+`<div class="prompt">${esc(sc.q)}</div>`+(sc.sub?`<div class="sub">${esc(sc.sub)}</div>`:'')
+  el.innerHTML=(sc.k?`<div class="kicker">${esc(sc.k)}</div>`:'')+`<div class="prompt" style="font-size:clamp(28px,5vw,42px); font-weight:600">${esc(sc.q)}</div>`+(sc.sub?`<div class="sub" style="font-size:clamp(17px,2.6vw,22px); color:var(--ink); font-weight:600; margin-top:16px">${esc(sc.sub)}</div>`:'')
     +`<button class="go ready" id="goBtn" style="margin-top:34px;">Keep going <span aria-hidden="true">→</span></button>`;
   el.querySelector('#goBtn').addEventListener('click',()=>advance(el));
 }
@@ -855,13 +857,13 @@ function renderBreather(el){
     <p class="sub">Good, bad, ugly. Ten ways to get it right. Just tune it out for a moment.</p>
     <div class="noisecloud">${pills}</div>
     <div class="breathe">breathe</div>
-    <div class="prompt" style="font-size:clamp(19px,3.2vw,26px); margin-top:30px">Ready to find out who <i>you</i> are as a decision-maker?</div>
+    <div class="prompt" style="font-size:clamp(25px,4.6vw,37px); font-weight:600; margin-top:30px">Ready to find out who <i>you</i> are as a decision-maker?</div>
     <button class="go ready" id="goBtn" style="margin-top:16px">Let's begin <span aria-hidden="true">→</span></button>`;
   const au=document.getElementById('noise'); if(au&&au.getAttribute('src')){ try{ au.currentTime=0; const p=au.play&&au.play(); if(p&&p.catch)p.catch(()=>{}); }catch(e){} }
   el.querySelector('#goBtn').addEventListener('click',()=>{ if(au){try{au.pause();}catch(e){}} advance(el); });
 }
 function renderBelief(el){
-  el.innerHTML=`<div class="kicker">a quick one to start</div><div class="prompt">Some people are just born better decision-makers than others.</div>
+  el.innerHTML=`<div class="kicker">a quick one to start</div><div class="prompt" id="beliefQ" style="white-space:nowrap; font-weight:600; color:var(--ink);">Some people are just born better decision-makers than others.</div>
     <div class="sub">Do you believe this?</div>
     <div class="cards" id="b">
       ${["Yes, I believe so","Not sure","No, I don't"].map((x,i)=>`<div class="card" data-i="${i}">${x}</div>`).join('')}
@@ -869,6 +871,15 @@ function renderBelief(el){
     <div class="kbhint">tap, or press 1 · 2 · 3</div>
     <textarea id="bt" rows="3" placeholder="Share your thinking, if you like (optional)"></textarea>
     <div><button class="go ready" id="goBtn">Continue <span aria-hidden="true">→</span></button></div>`;
+  /* keep the opening line on one prominent line: start large, shrink just enough to fit the container */
+  const fitBelief=()=>{ const q=el.querySelector('#beliefQ'); if(!q||!q.isConnected) return;
+    q.style.whiteSpace='nowrap'; let s=30; q.style.fontSize=s+'px';
+    while(q.scrollWidth>q.clientWidth && s>16){ s-=1; q.style.fontSize=s+'px'; }
+    /* too narrow for one readable line (small phones): wrap rather than shrink to nothing */
+    if(q.scrollWidth>q.clientWidth){ q.style.whiteSpace='normal'; q.style.fontSize='18px'; } };
+  requestAnimationFrame(()=>requestAnimationFrame(fitBelief));
+  setTimeout(fitBelief, 60);   // fallback: rAF is paused while the tab is backgrounded
+  window.addEventListener('resize', fitBelief, {passive:true});
   let picked=null;
   el.querySelectorAll('#b .card').forEach(c=>c.addEventListener('click',()=>{ el.querySelectorAll('#b .card').forEach(x=>x.classList.remove('chosen')); c.classList.add('chosen'); picked=+c.dataset.i; }));
   el.querySelector('#goBtn').addEventListener('click',()=>{ state.belief=picked==null?null:[3,2,1][picked]; state.beliefText=el.querySelector('#bt').value.trim(); save(); addNode(null); advance(el); });
@@ -882,14 +893,14 @@ const DEMO2=[["edu","Highest educational qualification","text"],["profession","P
   ["designation","Current designation / role","text"],["experience","Total professional experience (e.g., 5 years 3 months)","text"],
   ["sector","Industry sector / academic department","text"],
   ["incomeSlab","Income slab (self or family)",["Lower Income Group (LIG)","Middle Income Group (MIG)","Higher Income Group (HIG)"]],
-  ["income","Estimated monthly / annual income","text"]];
+  ["income","Estimated monthly income","text"]];
 function field(f){ const [k,lab,type]=f, opt=(type&&type.opt); const star=opt?'':' <span class="req">*</span>';
   if(Array.isArray(type)) return `<div class="field"><label>${lab}${star}</label><div class="mcq" data-k="${k}" data-req="${opt?0:1}">${type.map(o=>`<button type="button" class="opt${state.demo[k]===o?' sel':''}" data-val="${esc(o)}">${esc(o)}</button>`).join('')}</div></div>`;
   const tp=(type&&type.opt)?'text':type;
   return `<div class="field"><label>${lab}${star}</label><input data-k="${k}" data-req="${opt?0:1}" type="${tp}" value="${esc(state.demo[k]||'')}"></div>`; }
 function renderDemo(el,part){
   const fields=(part===1?DEMO1:DEMO2);
-  el.innerHTML=`<div class="prompt">${part===1?'The basics.':'For context.'}</div>
+  el.innerHTML=`<div class="prompt">${part===1?'First, the basics.':'For context.'}</div>
     <p class="sub">${part===1?'Quick and completely private. No grades, no judgement, no right answers.':'Almost there. Same deal, all kept in strict confidence.'}</p>
     <div class="dform">${fields.map(field).join('')}</div>
     <button class="go" id="goBtn" style="margin-top:24px">Continue <span aria-hidden="true">→</span></button>`;
@@ -1081,8 +1092,8 @@ function renderLetter(el,axis){
   const rest=[]; for(let a=axis+1;a<=4;a++) rest.push('?');
   el.innerHTML=`<div class="kicker">a piece of your profile</div>
     <div class="bigletter">${L.ch}</div>
-    <div class="prompt" style="font-size:clamp(19px,3vw,26px)">${esc(L.meaning)}</div>
-    <div class="code">${have.concat(rest).join(' · ')}</div>
+    <div class="prompt" style="font-size:clamp(25px,4.2vw,35px); font-weight:600; color:var(--ink)">${esc(L.meaning)}</div>
+    <div class="code" style="font-size:20px; color:var(--ink); font-weight:800; margin-top:20px">${have.concat(rest).join(' · ')}</div>
     <button class="go ready" id="goBtn" style="margin-top:28px">Collect it <span aria-hidden="true">→</span></button>`;
   el.querySelector('#goBtn').addEventListener('click',()=>advance(el));
 }
@@ -1104,7 +1115,7 @@ function finish(){
   document.getElementById('endLine').innerHTML=`<span class="codebadge">${code.join(' · ')}</span>`;
   const meanings=[1,2,3,4].map(a=>letterFor(a).meaning);
   document.getElementById('trivia').innerHTML=
-    `<p style="font-size:15.5px;color:var(--ink);line-height:1.65;font-weight:500;margin-bottom:8px">${esc(pdesc)}</p>`
+    `<p style="font-size:17.5px;color:var(--ink);line-height:1.7;font-weight:600;margin-bottom:10px">${esc(pdesc)}</p>`
     + meanings.map(t=>`<div class="t"><b>◆</b><span>${esc(t)}</span></div>`).join('')
     + generateReflection().map(t=>`<div class="t"><b>◆</b><span>${esc(t)}</span></div>`).join('');
 
