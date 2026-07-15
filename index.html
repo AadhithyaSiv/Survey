@@ -186,7 +186,7 @@
   .sndbtn{position:absolute; bottom:12px; left:14px; z-index:5; cursor:pointer; background:var(--paper); border:1px solid var(--line);
     color:var(--ink); border-radius:20px; padding:7px 14px; font-size:12px; font-weight:700; opacity:.85; font-family:inherit;}
   .sndbtn:hover{opacity:1;}
-  .navbtn{position:absolute; top:50%; transform:translateY(-50%); z-index:6; height:46px; padding:0 20px; border-radius:24px;
+  .navbtn{position:fixed; top:50%; transform:translateY(-50%); z-index:6; height:46px; padding:0 20px; border-radius:24px;
     background:var(--paper); border:2px solid var(--accent); color:var(--accent); font:800 15px/1 Inter,sans-serif; letter-spacing:.01em;
     cursor:pointer; display:none; align-items:center; gap:7px; opacity:1; box-shadow:0 4px 16px rgba(0,0,0,.20);
     -webkit-backdrop-filter:blur(5px); backdrop-filter:blur(5px); transition:transform .18s ease, box-shadow .18s ease, background .18s ease, color .18s ease;}
@@ -195,7 +195,14 @@
   .navbtn .arw{font:600 22px/1 'Newsreader',Georgia,serif; margin-top:-2px;}
   .navback{left:16px;} .navback:hover{transform:translateY(-50%) translateX(-3px);}
   .navnext{right:16px;} .navnext:hover{transform:translateY(-50%) translateX(3px);}
-  @media (max-width:520px){ .navbtn{height:40px; padding:0 14px; font-size:13.5px;} .navbtn .arw{font-size:19px;} .navback{left:7px;} .navnext{right:7px;} }
+  @media (max-width:520px){
+    /* phones: pin the pair to a fixed bottom row, clear of the centred answers and the status bar */
+    .navbtn{top:auto; transform:none; bottom:calc(54px + env(safe-area-inset-bottom,0px)); height:44px; padding:0 20px; font-size:15px; min-width:104px; justify-content:center; box-shadow:0 4px 18px rgba(0,0,0,.28);}
+    .navbtn .arw{font-size:21px;}
+    .navback{left:14px;} .navnext{right:14px;}
+    .navbtn:hover, .navback:hover, .navnext:hover{transform:none; background:var(--paper); color:var(--accent);}
+    #stage{padding-bottom:120px;}
+  }
   @media (prefers-reduced-motion: reduce){ .moment.in{animation:none;opacity:1;} .blob{animation:none;} }
 </style>
 </head>
