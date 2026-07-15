@@ -69,7 +69,9 @@
   .qblock:first-of-type{border-top:none; padding-top:10px;}
   .qtext{font-family:'Newsreader',Georgia,serif; font-size:clamp(18px,2.6vw,23px); line-height:1.36; font-weight:500;}
   .qblock .cells{margin-top:16px;}
-  .qblock.focus{background:rgba(120,120,170,.06); border-radius:14px; padding-left:12px; padding-right:12px;}
+  /* the focus highlight extends outward (negative margin cancels the padding) so it never
+     narrows the options row — otherwise the cells would reflow 3-per-row → 2-per-row */
+  .qblock.focus{background:rgba(120,120,170,.06); border-radius:14px; padding-left:12px; padding-right:12px; margin-left:-12px; margin-right:-12px;}
   .kbhint{font-size:14px; color:var(--ink-dim); opacity:.75; margin-top:16px; font-weight:600; letter-spacing:.02em;}
   /* decision-maker profile + expanded end screen */
   .bigletter{font-family:'Newsreader',Georgia,serif; font-size:clamp(60px,15vw,116px); font-weight:500; color:var(--accent); line-height:1; margin:4px 0 12px;}
@@ -191,6 +193,8 @@
     cursor:pointer; display:none; align-items:center; gap:7px; opacity:1; box-shadow:0 4px 16px rgba(0,0,0,.20);
     -webkit-backdrop-filter:blur(5px); backdrop-filter:blur(5px); transition:transform .18s ease, box-shadow .18s ease, background .18s ease, color .18s ease;}
   .navbtn.on{display:inline-flex;}
+  #navScrim{position:fixed; left:0; right:0; bottom:0; height:132px; z-index:5; pointer-events:none; display:none;
+    background:linear-gradient(to top, var(--bg2,#0c241d) 0, var(--bg2,#0c241d) 96px, transparent 132px);}
   .navbtn:hover{background:var(--accent); color:#fff; box-shadow:0 6px 22px rgba(0,0,0,.30);}
   .navbtn .arw{font:600 22px/1 'Newsreader',Georgia,serif; margin-top:-2px;}
   .navback{left:16px;} .navback:hover{transform:translateY(-50%) translateX(-3px);}
@@ -201,7 +205,8 @@
     .navbtn .arw{font-size:21px;}
     .navback{left:14px;} .navnext{right:14px;}
     .navbtn:hover, .navback:hover, .navnext:hover{transform:none; background:var(--paper); color:var(--accent);}
-    #stage{padding-bottom:120px;}
+    #navScrim.on{display:block;}
+    #stage{padding-bottom:132px;}
   }
   @media (prefers-reduced-motion: reduce){ .moment.in{animation:none;opacity:1;} .blob{animation:none;} }
 </style>
@@ -214,6 +219,7 @@
   <div id="vignette"></div>
   <canvas id="thread"></canvas>
   <div id="stage"></div>
+  <div id="navScrim" aria-hidden="true"></div>
   <button class="navbtn navback" id="navBack" aria-label="Previous question" title="Previous"><span class="arw">‹</span>Back</button>
   <button class="navbtn navnext" id="navNext" aria-label="Next question" title="Next (only screens you've already reached)">Next<span class="arw">›</span></button>
   <div class="hint" id="hint"></div>
@@ -587,6 +593,7 @@ function applyTheme(name){
   const dark = theme.paper.charAt(0)!=='#';
   r.setProperty('--scrim', dark?'rgba(4,10,16,.42)':'rgba(255,255,255,.52)');
   r.setProperty('--scrimEdge', dark?'rgba(0,0,0,.4)':'rgba(70,85,120,.09)');
+  r.setProperty('--bg2', theme.bgB);
   document.body.style.background='linear-gradient(160deg,'+theme.bgA+' 0%,'+theme.bgB+' 100%)';
   resize();
   try{ Sound.setTheme(theme.sound); }catch(e){}
@@ -638,7 +645,7 @@ function buildScreens(){
     else if(sec.id==="scale"){
       const list=sec.scale, key=list[0].code.split('_')[0], ord=seededOrder(key,list.length);
       const name=SCALE_NAMES.get(list)||key;
-      const items=ord.map(i=>list[i]); const n=3; let buf=[];   // cap: at most 3 questions on screen at once
+      const items=ord.map(i=>list[i]); const n=(window.innerWidth<=520?2:3); let buf=[];   // cap per screen: 2 on phones, 3 on larger
       const flush=()=>{ if(buf.length){ SCREENS.push({kind:"items",items:buf,scale:name}); buf=[]; } };
       for(const it of items){ if(it.rev){ flush(); SCREENS.push({kind:"items",items:[it],scale:name}); }  // reverse item = its own screen
         else { buf.push(it); if(buf.length>=n) flush(); } }                                       // others grouped into a round
@@ -856,8 +863,10 @@ function updateNav(){
   if(!back||!next) return;
   const overlay=['intro','resume','end','bye'].some(k=>{ const n=document.getElementById(k); return n&&n.classList.contains('show'); });
   const inSurvey = !overlay && state.idx>=0 && state.idx<SCREENS.length;
-  back.classList.toggle('on', inSurvey && state.idx>0);
-  next.classList.toggle('on', inSurvey && state.idx<(state.maxIdx||0));
+  const showBack = inSurvey && state.idx>0, showNext = inSurvey && state.idx<(state.maxIdx||0);
+  back.classList.toggle('on', showBack);
+  next.classList.toggle('on', showNext);
+  const scrim=document.getElementById('navScrim'); if(scrim) scrim.classList.toggle('on', showBack||showNext);
 }
 function navTo(i){ if(i<0||i>=SCREENS.length) return; state.idx=i; save(); render(); }
 function advance(el){ el.classList.remove('in'); el.classList.add('out'); state.idx++; state.maxIdx=Math.max(state.maxIdx||0,state.idx); save(); setTimeout(render,420); }
@@ -1363,7 +1372,8 @@ const Sound=(function(){
    OVERLAYS + BOOT
    =========================================================== */
 function show(id){ ['intro','resume','end','bye'].forEach(k=>document.getElementById(k).classList.toggle('show', k===id));
-  const b=document.getElementById('navBack'), n=document.getElementById('navNext'); if(b)b.classList.remove('on'); if(n)n.classList.remove('on'); }
+  const b=document.getElementById('navBack'), n=document.getElementById('navNext'), s=document.getElementById('navScrim');
+  if(b)b.classList.remove('on'); if(n)n.classList.remove('on'); if(s)s.classList.remove('on'); }
 function hideAll(){ ['intro','resume','end','bye'].forEach(k=>document.getElementById(k).classList.remove('show')); }
 document.querySelectorAll('.theme').forEach(t=>t.addEventListener('click',()=>{
   document.querySelectorAll('.theme').forEach(x=>x.classList.remove('sel')); t.classList.add('sel');
