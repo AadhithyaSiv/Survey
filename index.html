@@ -186,15 +186,16 @@
   .sndbtn{position:absolute; bottom:12px; left:14px; z-index:5; cursor:pointer; background:var(--paper); border:1px solid var(--line);
     color:var(--ink); border-radius:20px; padding:7px 14px; font-size:12px; font-weight:700; opacity:.85; font-family:inherit;}
   .sndbtn:hover{opacity:1;}
-  .navbtn{position:absolute; top:50%; transform:translateY(-50%); z-index:6; width:44px; height:44px; border-radius:50%;
-    background:var(--paper); border:1px solid var(--line); color:var(--ink); font:600 24px/1 'Newsreader',Georgia,serif;
-    cursor:pointer; display:none; align-items:center; justify-content:center; opacity:.72; -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px);
-    transition:opacity .18s ease, transform .18s ease;}
-  .navbtn.on{display:flex;}
-  .navbtn:hover{opacity:1;}
-  .navback{left:12px;} .navback:hover{transform:translateY(-50%) translateX(-2px);}
-  .navnext{right:12px;} .navnext:hover{transform:translateY(-50%) translateX(2px);}
-  @media (max-width:520px){ .navbtn{width:38px; height:38px; font-size:21px;} .navback{left:5px;} .navnext{right:5px;} }
+  .navbtn{position:absolute; top:50%; transform:translateY(-50%); z-index:6; height:46px; padding:0 20px; border-radius:24px;
+    background:var(--paper); border:2px solid var(--accent); color:var(--accent); font:800 15px/1 Inter,sans-serif; letter-spacing:.01em;
+    cursor:pointer; display:none; align-items:center; gap:7px; opacity:1; box-shadow:0 4px 16px rgba(0,0,0,.20);
+    -webkit-backdrop-filter:blur(5px); backdrop-filter:blur(5px); transition:transform .18s ease, box-shadow .18s ease, background .18s ease, color .18s ease;}
+  .navbtn.on{display:inline-flex;}
+  .navbtn:hover{background:var(--accent); color:#fff; box-shadow:0 6px 22px rgba(0,0,0,.30);}
+  .navbtn .arw{font:600 22px/1 'Newsreader',Georgia,serif; margin-top:-2px;}
+  .navback{left:16px;} .navback:hover{transform:translateY(-50%) translateX(-3px);}
+  .navnext{right:16px;} .navnext:hover{transform:translateY(-50%) translateX(3px);}
+  @media (max-width:520px){ .navbtn{height:40px; padding:0 14px; font-size:13.5px;} .navbtn .arw{font-size:19px;} .navback{left:7px;} .navnext{right:7px;} }
   @media (prefers-reduced-motion: reduce){ .moment.in{animation:none;opacity:1;} .blob{animation:none;} }
 </style>
 </head>
@@ -206,8 +207,8 @@
   <div id="vignette"></div>
   <canvas id="thread"></canvas>
   <div id="stage"></div>
-  <button class="navbtn navback" id="navBack" aria-label="Previous question" title="Previous">‹</button>
-  <button class="navbtn navnext" id="navNext" aria-label="Next question" title="Next (only screens you've already reached)">›</button>
+  <button class="navbtn navback" id="navBack" aria-label="Previous question" title="Previous"><span class="arw">‹</span>Back</button>
+  <button class="navbtn navnext" id="navNext" aria-label="Next question" title="Next (only screens you've already reached)">Next<span class="arw">›</span></button>
   <div class="hint" id="hint"></div>
   <div class="prog" id="prog"></div>
   <button class="sndbtn" id="sndbtn">Sound off</button>
