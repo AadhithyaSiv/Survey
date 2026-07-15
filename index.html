@@ -186,6 +186,15 @@
   .sndbtn{position:absolute; bottom:12px; left:14px; z-index:5; cursor:pointer; background:var(--paper); border:1px solid var(--line);
     color:var(--ink); border-radius:20px; padding:7px 14px; font-size:12px; font-weight:700; opacity:.85; font-family:inherit;}
   .sndbtn:hover{opacity:1;}
+  .navbtn{position:absolute; top:50%; transform:translateY(-50%); z-index:6; width:44px; height:44px; border-radius:50%;
+    background:var(--paper); border:1px solid var(--line); color:var(--ink); font:600 24px/1 'Newsreader',Georgia,serif;
+    cursor:pointer; display:none; align-items:center; justify-content:center; opacity:.72; -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px);
+    transition:opacity .18s ease, transform .18s ease;}
+  .navbtn.on{display:flex;}
+  .navbtn:hover{opacity:1;}
+  .navback{left:12px;} .navback:hover{transform:translateY(-50%) translateX(-2px);}
+  .navnext{right:12px;} .navnext:hover{transform:translateY(-50%) translateX(2px);}
+  @media (max-width:520px){ .navbtn{width:38px; height:38px; font-size:21px;} .navback{left:5px;} .navnext{right:5px;} }
   @media (prefers-reduced-motion: reduce){ .moment.in{animation:none;opacity:1;} .blob{animation:none;} }
 </style>
 </head>
@@ -197,6 +206,8 @@
   <div id="vignette"></div>
   <canvas id="thread"></canvas>
   <div id="stage"></div>
+  <button class="navbtn navback" id="navBack" aria-label="Previous question" title="Previous">‹</button>
+  <button class="navbtn navnext" id="navNext" aria-label="Next question" title="Next (only screens you've already reached)">›</button>
   <div class="hint" id="hint"></div>
   <div class="prog" id="prog"></div>
   <button class="sndbtn" id="sndbtn">Sound off</button>
@@ -582,7 +593,7 @@ function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e
 function load(){ try{ const r=localStorage.getItem(KEY), o=r?JSON.parse(r):null;
   if(o && typeof o.idx==='number' && o.answers) return o; return null; }catch(e){ return null; } }
 function newId(){ return 'r_'+Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4); }
-function fresh(th){ return {idx:0, theme:th, id:newId(), startedAt:Date.now(), consent:null, demo:{}, belief:null, beliefText:"", answers:{}, nodes:[], order:{}}; }
+function fresh(th){ return {idx:0, maxIdx:0, theme:th, id:newId(), startedAt:Date.now(), consent:null, demo:{}, belief:null, beliefText:"", beliefDone:false, demoDone:false, answers:{}, nodes:[], order:{}}; }
 /* deterministic shuffle per scale (seed by id) so resume keeps the same order */
 function seededOrder(key, n){
   if(state.order[key]) return state.order[key];
@@ -827,8 +838,21 @@ function render(){
   else if(sc.kind==='sjt') renderSJT(el,sc.sc);
   stage.innerHTML=''; stage.appendChild(el); tStart=performance.now();
   requestAnimationFrame(()=>requestAnimationFrame(()=>{ el.classList.add('in'); if(sc.kind==='items') el.classList.add(state.idx%2?'ar':'al'); }));
+  updateNav();
 }
-function advance(el){ el.classList.remove('in'); el.classList.add('out'); state.idx++; save(); setTimeout(render,420); }
+/* Back / Next navigation. Back is always available (except the very first screen);
+   Next only appears for screens you've already reached (state.maxIdx), so you can
+   revisit and edit past answers but never skip ahead into unseen questions. */
+function updateNav(){
+  const back=document.getElementById('navBack'), next=document.getElementById('navNext');
+  if(!back||!next) return;
+  const overlay=['intro','resume','end','bye'].some(k=>{ const n=document.getElementById(k); return n&&n.classList.contains('show'); });
+  const inSurvey = !overlay && state.idx>=0 && state.idx<SCREENS.length;
+  back.classList.toggle('on', inSurvey && state.idx>0);
+  next.classList.toggle('on', inSurvey && state.idx<(state.maxIdx||0));
+}
+function navTo(i){ if(i<0||i>=SCREENS.length) return; state.idx=i; save(); render(); }
+function advance(el){ el.classList.remove('in'); el.classList.add('out'); state.idx++; state.maxIdx=Math.max(state.maxIdx||0,state.idx); save(); setTimeout(render,420); }
 function addNode(val){ const i=state.nodes.length, ang=i*2.39996, rad=0.30+(i/Math.max(SCREENS.length,1))*0.44;
   state.nodes.push({x:0.5+Math.cos(ang)*rad*0.74, y:0.5+Math.sin(ang)*rad*0.56, val:(val==null?55:val), mag:(val==null?.85:.55+val/200)}); }
 
@@ -881,8 +905,13 @@ function renderBelief(el){
   setTimeout(fitBelief, 60);   // fallback: rAF is paused while the tab is backgrounded
   window.addEventListener('resize', fitBelief, {passive:true});
   let picked=null;
+  // restore prior choice + text on revisit
+  if(state.belief!=null){ const pi=[3,2,1].indexOf(state.belief); if(pi>=0){ const card=el.querySelectorAll('#b .card')[pi]; if(card) card.classList.add('chosen'); picked=pi; } }
+  if(state.beliefText) el.querySelector('#bt').value=state.beliefText;
   el.querySelectorAll('#b .card').forEach(c=>c.addEventListener('click',()=>{ el.querySelectorAll('#b .card').forEach(x=>x.classList.remove('chosen')); c.classList.add('chosen'); picked=+c.dataset.i; }));
-  el.querySelector('#goBtn').addEventListener('click',()=>{ state.belief=picked==null?null:[3,2,1][picked]; state.beliefText=el.querySelector('#bt').value.trim(); save(); addNode(null); advance(el); });
+  el.querySelector('#goBtn').addEventListener('click',()=>{ state.belief=picked==null?null:[3,2,1][picked]; state.beliefText=el.querySelector('#bt').value.trim();
+    if(!state.beliefDone){ addNode(null); state.beliefDone=true; }   // one node for this milestone, even if revisited
+    save(); advance(el); });
 }
 const DEMO1=[["name","Full name (optional)",{opt:true}],["age","Age (years)","number"],
   ["gender","Gender identity",["Female","Male","Other","Prefer not to say"]],
@@ -913,7 +942,7 @@ function renderDemo(el,part){
   el.querySelectorAll('.mcq').forEach(m=>m.querySelectorAll('.opt').forEach(b=>b.addEventListener('click',()=>{
     m.querySelectorAll('.opt').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); state.demo[m.dataset.k]=b.dataset.val; save(); check(); })));
   check();
-  go.addEventListener('click',()=>{ if(!go.classList.contains('ready')) return; if(part===2) addNode(null); advance(el); });
+  go.addEventListener('click',()=>{ if(!go.classList.contains('ready')) return; if(part===2 && !state.demoDone){ addNode(null); state.demoDone=true; } advance(el); });
 }
 function renderItems(el,items){
   const solo=items.length===1, R=respOf(items[0]);
@@ -926,13 +955,18 @@ function renderItems(el,items){
     +items.map((m,qi)=>`<div class="qblock"><div class="qtext">${esc(m.q)}</div>${row(qi)}</div>`).join(''); }
   el.innerHTML=html;
   const chosen={};
-  const commit=()=>items.forEach((m,qi)=>{ if(chosen[qi]!=null) record(m, R.vals[chosen[qi]]); });
+  // restore any previous answers (so revisiting a screen shows what you picked)
+  items.forEach((m,qi)=>{ const a=state.answers[m.code]; if(a&&a.raw!=null){ const ci=R.vals.indexOf(a.raw);
+    if(ci>=0){ chosen[qi]=ci; const rw=el.querySelector('.cells[data-c="'+qi+'"]'); const cell=rw&&rw.querySelector('.cell[data-i="'+ci+'"]'); if(cell) cell.classList.add('chosen'); } } });
+  const wasComplete = items.every(m=>state.answers[m.code] && state.answers[m.code].raw!=null);
   el.querySelectorAll('.cells').forEach(rw=>{ const qi=+rw.dataset.c;
     rw.querySelectorAll('.cell').forEach(c=>c.addEventListener('click',()=>{
       if(el.dataset.lock)return;
       rw.querySelectorAll('.cell').forEach(x=>x.classList.remove('chosen')); c.classList.add('chosen'); chosen[qi]=+c.dataset.i;
+      record(items[qi], R.vals[chosen[qi]]);   // save each pick immediately (supports back/next + edits)
       if(!solo) highlightFocus(el);
-      if(Object.keys(chosen).length>=items.length){ el.dataset.lock=1; commit(); setTimeout(()=>advance(el),solo?300:380); }
+      // auto-advance only the first time a fresh screen is completed; on revisit, let them edit and use Next
+      if(!wasComplete && Object.keys(chosen).length>=items.length){ el.dataset.lock=1; setTimeout(()=>advance(el),solo?300:380); }
     })); });
   if(!solo) highlightFocus(el);
 }
@@ -945,6 +979,8 @@ function highlightFocus(el){
 function onKey(e){
   const tag=(e.target&&e.target.tagName)||''; if(tag==='INPUT'||tag==='TEXTAREA') return;
   const el=stage.firstElementChild, sc=SCREENS[state.idx]; if(!el||!sc) return;
+  if(e.key==='ArrowLeft'){ const b=document.getElementById('navBack'); if(b&&b.classList.contains('on')){ e.preventDefault(); navTo(state.idx-1); } return; }
+  if(e.key==='ArrowRight'){ const n=document.getElementById('navNext'); if(n&&n.classList.contains('on')){ e.preventDefault(); navTo(state.idx+1); } return; }
   if(e.key==='Enter'){ const go=el.querySelector('#goBtn'); if(go&&go.classList.contains('ready')){ e.preventDefault(); go.click(); } return; }
   if(sc.kind==='items'){
     const rows=[...el.querySelectorAll('.cells')]; if(!rows.length) return;
@@ -966,19 +1002,26 @@ function renderSJT(el,sc){
     <div class="prompt" style="font-size:clamp(20px,3.2vw,27px); line-height:1.42">${esc(sc.q)}</div>
     <div class="col" id="opts">${sc.options.map((o,i)=>`<div class="card" data-i="${i}"><span class="ol">${o.L}</span>${esc(o.t)}</div>`).join('')}</div>
     <div class="kbhint">tap, or press A to E</div>`;
+  const prev=state.answers[sc.code];
+  if(prev){ const pi=sc.options.findIndex(o=>o.L===prev.choice); const card=pi>=0&&el.querySelectorAll('#opts .card')[pi]; if(card) card.classList.add('chosen'); }
+  const wasAnswered=!!prev;
   el.querySelectorAll('#opts .card').forEach(c=>c.addEventListener('click',()=>{
-    if(el.dataset.lock)return; el.dataset.lock=1; c.classList.add('chosen');
-    const o=sc.options[+c.dataset.i];
+    if(el.dataset.lock)return;
+    el.querySelectorAll('#opts .card').forEach(x=>x.classList.remove('chosen')); c.classList.add('chosen');
+    const o=sc.options[+c.dataset.i], isNew=!state.answers[sc.code];
     state.answers[sc.code]={choice:o.L, text:o.t, weight:o.w, rtMs:Math.round(performance.now()-tStart)};
-    addNode(o.w/5*100); save(); setTimeout(()=>advance(el),320);
+    if(isNew) addNode(o.w/5*100); save();
+    if(!wasAnswered){ el.dataset.lock=1; setTimeout(()=>advance(el),320); }   // first time: auto-advance; revisit: edit + Next
   }));
 }
 function record(m, val){
   const R=RESP[m.resp||'L5']; const label=R.labels[R.vals.indexOf(val)];
+  const isNew=!state.answers[m.code];
   state.answers[m.code]={raw:val, label:label, s:m.s, rev:!!m.rev, resp:m.resp||'L5', rtMs:Math.round(performance.now()-tStart)};
   const disp=m.rev?R.rev(val):val;
   const span=R.vals[R.vals.length-1]-R.vals[0]; const norm=((disp-R.vals[0])/span)*100;
-  addNode(norm); save();
+  if(isNew) addNode(norm);   // editing a prior answer must not add a second node
+  save();
 }
 
 /* ===========================================================
@@ -1311,7 +1354,8 @@ const Sound=(function(){
 /* ===========================================================
    OVERLAYS + BOOT
    =========================================================== */
-function show(id){ ['intro','resume','end','bye'].forEach(k=>document.getElementById(k).classList.toggle('show', k===id)); }
+function show(id){ ['intro','resume','end','bye'].forEach(k=>document.getElementById(k).classList.toggle('show', k===id));
+  const b=document.getElementById('navBack'), n=document.getElementById('navNext'); if(b)b.classList.remove('on'); if(n)n.classList.remove('on'); }
 function hideAll(){ ['intro','resume','end','bye'].forEach(k=>document.getElementById(k).classList.remove('show')); }
 document.querySelectorAll('.theme').forEach(t=>t.addEventListener('click',()=>{
   document.querySelectorAll('.theme').forEach(x=>x.classList.remove('sel')); t.classList.add('sel');
@@ -1396,6 +1440,8 @@ document.getElementById('beginBtn').addEventListener('click',()=>{ const th=stat
 document.getElementById('resumeBtn').addEventListener('click',()=>{ hideAll(); render(); });
 document.getElementById('restartBtn').addEventListener('click',()=>{ state=fresh(state.theme); buildScreens(); save(); hideAll(); render(); });
 document.getElementById('againBtn').addEventListener('click',()=>{ state=fresh(state.theme); buildScreens(); save(); hideAll(); render(); });
+document.getElementById('navBack').addEventListener('click',()=>{ if(document.getElementById('navBack').classList.contains('on')) navTo(state.idx-1); });
+document.getElementById('navNext').addEventListener('click',()=>{ if(document.getElementById('navNext').classList.contains('on')) navTo(state.idx+1); });
 addEventListener('resize',()=>{ resize(); drawThread(); });
 addEventListener('keydown', onKey);
 
@@ -1408,7 +1454,7 @@ addEventListener('online', flushUnsent);
 
 const saved=load();
 if(saved && saved.idx>0){
-  state=saved; buildScreens(); applyTheme(state.theme||'wallstreet');
+  state=saved; state.maxIdx=Math.max(state.maxIdx||0, state.idx||0); buildScreens(); applyTheme(state.theme||'wallstreet');
   document.querySelectorAll('.theme').forEach(x=>x.classList.toggle('sel', x.dataset.th===(state.theme||'wallstreet')));
   if(saved.idx<SCREENS.length){ document.getElementById('resumeLine').textContent=`About ${Math.round(saved.idx/SCREENS.length*100)}% through. Continue where you left off.`; show('resume'); drawThread(); }
   else finish();
