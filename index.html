@@ -1378,7 +1378,7 @@ function hideAll(){ ['intro','resume','end','bye'].forEach(k=>document.getElemen
 document.querySelectorAll('.theme').forEach(t=>t.addEventListener('click',()=>{
   document.querySelectorAll('.theme').forEach(x=>x.classList.remove('sel')); t.classList.add('sel');
   state.theme=t.dataset.th; applyTheme(state.theme); }));
-/* ---- hidden admin: tap the sound toggle 4× quickly to unlock a floating
+/* ---- hidden admin: tap the sound toggle 10× quickly to unlock a floating
    Admin button (top-left); click it to open the jump-to-screen menu. ---- */
 function screenLabel(sc){
   switch(sc.kind){
@@ -1452,7 +1452,7 @@ let sndTaps=0, sndTapT=0;
 sbtn.addEventListener('click',()=>{
   const m=!Sound.isMuted(); Sound.setMuted(m); sbtn.textContent=m?'Sound off':'Sound on';
   const now=Date.now(); sndTaps=(now-sndTapT<1500)?sndTaps+1:1; sndTapT=now;
-  if(sndTaps>=4){ sndTaps=0; activateAdmin(); }
+  if(sndTaps>=10){ sndTaps=0; activateAdmin(); }
 });
 document.getElementById('beginBtn').addEventListener('click',()=>{ const th=state.theme; state=fresh(th); buildScreens(); save(); hideAll(); render(); try{ Sound.setMuted(false); sbtn.textContent='Sound on'; }catch(e){} });
 document.getElementById('resumeBtn').addEventListener('click',()=>{ hideAll(); render(); });
